@@ -6,6 +6,11 @@ import {
   addDevLog
 } from '../../src/backend-logic';
 
+interface KVNamespace {
+  get(key: string, options?: any): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+}
+
 export async function onRequest(context: {
   request: Request;
   env: {
@@ -228,4 +233,18 @@ export async function onRequest(context: {
       }
     }
   );
+}
+
+    return new Response(
+      JSON.stringify({ error: 'الرابط المطلوب غير موجود.' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (err: any) {
+    console.error('Error handling API request:', err);
+    addDevLog(path, null, err.message || String(err));
+    return new Response(
+      JSON.stringify({ error: err.message || 'حدث خطأ فني غير متوقع.' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 }
