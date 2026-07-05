@@ -39,6 +39,7 @@ import PoemRevisionWorkspace from './components/PoemRevisionWorkspace';
 import { PoetAnalytics } from './components/PoetAnalytics';
 import { METERS_DATA } from './metersData';
 import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
+import TurnstileWidget from './components/TurnstileWidget';
 
 // Sliding educational/literary quotes to entertain the user while generating (which can take 10-15s due to long verses)
 const LOADING_QUOTES = [
@@ -98,6 +99,34 @@ export default function App() {
   // Gemini API Backend Proxy Connection States
   const [isGeminiConnected, setIsGeminiConnected] = useState<boolean>(true);
   const [checkingHealth, setCheckingHealth] = useState<boolean>(true);
+
+  // Cloudflare Turnstile States
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState<number>(0);
+
+  // Remaining Daily Uses State
+  const [remainingDailyUses, setRemainingDailyUses] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.TURNSTILE_SITE_KEY) {
+            setTurnstileSiteKey(data.TURNSTILE_SITE_KEY);
+          }
+          if (data && typeof data.remainingDailyUses === 'number') {
+            setRemainingDailyUses(data.remainingDailyUses);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load Turnstile sitekey:', e);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -279,6 +308,12 @@ export default function App() {
     setError(null);
     setLoading(true);
 
+    if (turnstileSiteKey && !turnstileToken) {
+      setError('يرجى إكمال التحقق الأمني (Turnstile) أولاً.');
+      setLoading(false);
+      return;
+    }
+
     if (!description.trim()) {
       setError('يرجى كتابة وصف نثري لموضوع القصيدة لمساعدة الموديل في صياغتها.');
       setLoading(false);
@@ -313,7 +348,7 @@ export default function App() {
       } else if (poeticGenreForm === "ruba'iyyat") {
         finalDescription = `[رباعيات فلسفية حكيمة، يتألف كل مقطع من أربعة أشطر بنظام قافية (أ أ ب أ) كرباعيات الخيام الشهيرة، تبحث في أسرار الوجود والزمن والحكمة]:\n${finalDescription}`;
       } else if (poeticGenreForm === "maqtou'at") {
-        finalDescription = `[مقطوعة شعرية قصيرة جداً ومكثفة تركز على فكرة واحدة ببلاغة عالية ووجازة فائقة]:\n${finalDescription}`;
+        finalDescription = `[موقطوعة شعرية قصيرة جداً ومكثفة تركز على فكرة واحدة ببلاغة عالية ووجازة فائقة]:\n${finalDescription}`;
       }
 
       // 2. Handle joint poets style simulation
@@ -343,15 +378,22 @@ export default function App() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+          ...params,
+          turnstileToken
+        }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'فشل توليد القصيدة. يرجى مراجعة الخادم.');
+      const responseData = await response.json();
+      if (responseData && typeof responseData.remainingDailyUses === 'number') {
+        setRemainingDailyUses(responseData.remainingDailyUses);
       }
 
-      const rawPoemData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.error || 'فشل توليد القصيدة. يرجى مراجعة الخادم.');
+      }
+
+      const rawPoemData = responseData;
       
       // Construct final object
       const newPoem: GeneratedPoem = {
@@ -386,6 +428,9 @@ export default function App() {
       setError(err.message || 'حدث خطأ في الاتصال بالذكاء الاصطناعي لتوليد القصيدة.');
     } finally {
       setLoading(false);
+      // Reset Turnstile token and increment reset key
+      setTurnstileToken(null);
+      setTurnstileResetKey(prev => prev + 1);
     }
   };
 
@@ -1140,12 +1185,40 @@ export default function App() {
                   )}
                 </div>
 
+                {turnstileSiteKey && remainingDailyUses !== 0 && (
+                  <TurnstileWidget
+                    key={turnstileResetKey}
+                    siteKey={turnstileSiteKey}
+                    onVerify={setTurnstileToken}
+                    isDarkMode={isDarkMode}
+                    action="generate_poem"
+                  />
+                )}
+
+                {/* Remaining uses indicator */}
+                <div className="flex items-center justify-between text-xs font-serif font-bold mt-2">
+                  <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+                  </span>
+                </div>
+
+                {remainingDailyUses === 0 && (
+                  <div className={`p-4 rounded-xl border text-sm leading-relaxed ${
+                    isDarkMode ? 'bg-[#3b1216]/40 border-red-900/40 text-red-300' : 'bg-red-50 border-red-200 text-red-900'
+                  }`}>
+                    <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
+                    <p className="font-serif italic text-xs">
+                      عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+                    </p>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0}
                   className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg active:translate-y-0.5 transition-all flex items-center justify-center gap-2 border-b-4 ${
-                    loading 
+                    (loading || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0) 
                       ? 'bg-gray-400 text-gray-200 border-gray-600 cursor-not-allowed opacity-75' 
                       : 'bg-[#1a472a] text-white hover:bg-[#153a22] cursor-pointer border-[#0d2a18]'
                   }`}
@@ -1212,11 +1285,14 @@ export default function App() {
           <div className="animate-fade-in">
             <PoeticOpposition
               isDarkMode={isDarkMode}
+              turnstileSiteKey={turnstileSiteKey}
               onSavePoemToHistory={(poem) => {
                 const updated = [poem, ...history];
                 setHistory(updated);
                 saveHistoryToStorage(updated);
               }}
+              onUpdateRemainingUses={setRemainingDailyUses}
+              remainingDailyUses={remainingDailyUses}
             />
           </div>
         )}
@@ -1225,11 +1301,14 @@ export default function App() {
           <div className="animate-fade-in">
             <PoeticIndustries
               isDarkMode={isDarkMode}
+              turnstileSiteKey={turnstileSiteKey}
               onSavePoemToHistory={(poem) => {
                 const updated = [poem, ...history];
                 setHistory(updated);
                 saveHistoryToStorage(updated);
               }}
+              onUpdateRemainingUses={setRemainingDailyUses}
+              remainingDailyUses={remainingDailyUses}
             />
           </div>
         )}
@@ -1239,6 +1318,10 @@ export default function App() {
             <AdvancedTools
               meters={Object.values(METERS_DATA)}
               currentPoem={currentPoem}
+              turnstileSiteKey={turnstileSiteKey}
+              isDarkMode={isDarkMode}
+              onUpdateRemainingUses={setRemainingDailyUses}
+              remainingDailyUses={remainingDailyUses}
               onApplyNewPoem={(poem) => {
                 setCurrentPoem(poem);
                 if (poem && !history.some(p => p.id === poem.id)) {

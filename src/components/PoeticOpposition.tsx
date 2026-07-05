@@ -23,16 +23,24 @@ import {
   Feather,
   Info
 } from 'lucide-react';
+import TurnstileWidget from './TurnstileWidget';
 
 interface PoeticOppositionProps {
   isDarkMode: boolean;
+  turnstileSiteKey: string;
   onSavePoemToHistory: (poem: GeneratedPoem) => void;
+  onUpdateRemainingUses?: (uses: number) => void;
+  remainingDailyUses?: number | null;
 }
 
-export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: PoeticOppositionProps) {
+export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSavePoemToHistory, onUpdateRemainingUses, remainingDailyUses }: PoeticOppositionProps) {
   // Original poem state
   const [originalPoemText, setOriginalPoemText] = useState('');
   
+  // Turnstile state
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState<number>(0);
+
   // Analysis state
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -76,6 +84,10 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
 
   // Handle original poem analysis
   const handleAnalyzeOriginal = async () => {
+    if (turnstileSiteKey && !turnstileToken) {
+      setAnalysisError('يرجى إكمال التحقق الأمني (Turnstile) أولاً.');
+      return;
+    }
     if (!originalPoemText.trim()) {
       setAnalysisError('يرجى كتابة أو لصق أبيات القصيدة الأصلية أولاً.');
       return;
@@ -94,12 +106,16 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
         },
         body: JSON.stringify({
           toolAction: 'opposition-analyze',
-          payload: { poemText: originalPoemText }
+          payload: { poemText: originalPoemText },
+          turnstileToken
         })
       });
 
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data && typeof data.remainingDailyUses === 'number') {
+        onUpdateRemainingUses?.(data.remainingDailyUses);
+      }
+      if (!res.ok || data.error) throw new Error(data.error || 'فشل تحليل القصيدة الأصلية.');
       
       setAnalysisResult(data);
       if (data.poet && data.poet !== 'غير معروف') {
@@ -111,12 +127,19 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
       setAnalysisError(err.message || 'فشل تحليل القصيدة الأصلية. يرجى التحقق من الاتصال بالإنترنت.');
     } finally {
       setAnalyzing(false);
+      // Reset Turnstile token and increment reset key
+      setTurnstileToken(null);
+      setTurnstileResetKey(prev => prev + 1);
     }
   };
 
   // Handle generation of opposition poem
   const handleGenerateOpposition = async () => {
     if (!analysisResult) return;
+    if (turnstileSiteKey && !turnstileToken) {
+      setGenerationError('يرجى إكمال التحقق الأمني (Turnstile) أولاً.');
+      return;
+    }
     if (!newMeanings.trim()) {
       setGenerationError('يرجى إدخال المعاني الجديدة المطلوبة لنظم المعارضة حولها.');
       return;
@@ -141,12 +164,16 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
             manualPoet: manualPoet,
             newMeanings: newMeanings,
             versesCount: versesCount
-          }
+          },
+          turnstileToken
         })
       });
 
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data && typeof data.remainingDailyUses === 'number') {
+        onUpdateRemainingUses?.(data.remainingDailyUses);
+      }
+      if (!res.ok || data.error) throw new Error(data.error || 'فشل توليد المعارضة الشعرية.');
 
       // Add a unique ID
       const poemWithId = {
@@ -159,6 +186,9 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
       setGenerationError(err.message || 'فشل توليد المعارضة الشعرية. يرجى المحاولة لاحقاً.');
     } finally {
       setGenerating(false);
+      // Reset Turnstile token and increment reset key
+      setTurnstileToken(null);
+      setTurnstileResetKey(prev => prev + 1);
     }
   };
 
@@ -455,10 +485,45 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
                 </div>
               )}
 
+              {turnstileSiteKey && (
+                <div className="mt-4">
+                  <TurnstileWidget
+                    key={`opp_analyze_${turnstileResetKey}`}
+                    siteKey={turnstileSiteKey}
+                    onVerify={setTurnstileToken}
+                    isDarkMode={isDarkMode}
+                    action="opposition_analyze"
+                  />
+                </div>
+              )}
+
+              {remainingDailyUses !== undefined && (
+                <div className="mt-3 flex items-center justify-between text-xs font-serif font-bold">
+                  <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+                  </span>
+                </div>
+              )}
+
+              {remainingDailyUses === 0 && (
+                <div className={`mt-3 p-4 rounded-xl border text-xs leading-relaxed ${
+                  isDarkMode ? 'bg-[#3b1216]/40 border-red-900/40 text-red-300' : 'bg-red-50 border-red-200 text-red-900'
+                }`}>
+                  <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
+                  <p className="font-serif italic text-[11px]">
+                    عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+                  </p>
+                </div>
+              )}
+
               <button
                 onClick={handleAnalyzeOriginal}
-                disabled={analyzing || !originalPoemText.trim()}
-                className="w-full mt-4 py-3 bg-[#1a472a] hover:bg-royal-800 text-white font-bold rounded-2xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                disabled={analyzing || !originalPoemText.trim() || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0}
+                className={`w-full mt-4 py-3 text-white font-bold rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2 ${
+                  (analyzing || !originalPoemText.trim() || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0)
+                    ? 'bg-gray-400 cursor-not-allowed opacity-75'
+                    : 'bg-[#1a472a] hover:bg-royal-800 cursor-pointer'
+                }`}
               >
                 {analyzing ? (
                   <>
@@ -582,10 +647,45 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
                     </div>
                   )}
 
+                  {turnstileSiteKey && (
+                    <div className="mt-2">
+                      <TurnstileWidget
+                        key={`opp_generate_${turnstileResetKey}`}
+                        siteKey={turnstileSiteKey}
+                        onVerify={setTurnstileToken}
+                        isDarkMode={isDarkMode}
+                        action="opposition_generate"
+                      />
+                    </div>
+                  )}
+
+                  {remainingDailyUses !== undefined && (
+                    <div className="mt-3 flex items-center justify-between text-xs font-serif font-bold">
+                      <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+                        المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+                      </span>
+                    </div>
+                  )}
+
+                  {remainingDailyUses === 0 && (
+                    <div className={`mt-3 p-4 rounded-xl border text-xs leading-relaxed ${
+                      isDarkMode ? 'bg-[#3b1216]/40 border-red-900/40 text-red-300' : 'bg-red-50 border-red-200 text-red-900'
+                    }`}>
+                      <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
+                      <p className="font-serif italic text-[11px]">
+                        عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+                      </p>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleGenerateOpposition}
-                    disabled={generating || !newMeanings.trim()}
-                    className="w-full py-3.5 bg-[#8b1d2e] hover:bg-red-800 text-white font-bold rounded-2xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+                    disabled={generating || !newMeanings.trim() || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0}
+                    className={`w-full py-3.5 text-white font-bold rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm ${
+                      (generating || !newMeanings.trim() || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0)
+                        ? 'bg-gray-400 cursor-not-allowed opacity-75'
+                        : 'bg-[#8b1d2e] hover:bg-red-800 cursor-pointer'
+                    }`}
                   >
                     {generating ? (
                       <>

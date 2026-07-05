@@ -20,17 +20,25 @@ import {
   Quote,
   Layers2
 } from 'lucide-react';
+import TurnstileWidget from './TurnstileWidget';
 
 interface PoeticIndustriesProps {
   isDarkMode: boolean;
+  turnstileSiteKey: string;
   onSavePoemToHistory: (poem: GeneratedPoem) => void;
+  onUpdateRemainingUses?: (uses: number) => void;
+  remainingDailyUses?: number | null;
 }
 
 type IndustryType = 'takhmees' | 'tasbeeq' | 'tashteer';
 
-export default function PoeticIndustries({ isDarkMode, onSavePoemToHistory }: PoeticIndustriesProps) {
+export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSavePoemToHistory, onUpdateRemainingUses, remainingDailyUses }: PoeticIndustriesProps) {
   const [industryType, setIndustryType] = useState<IndustryType>('takhmees');
   const [originalPoemText, setOriginalPoemText] = useState('');
+
+  // Turnstile state
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState<number>(0);
 
   // Processing states
   const [generating, setGenerating] = useState(false);
@@ -58,6 +66,10 @@ export default function PoeticIndustries({ isDarkMode, onSavePoemToHistory }: Po
   } | null>(null);
 
   const handleApplyIndustry = async () => {
+    if (turnstileSiteKey && !turnstileToken) {
+      setError('يرجى إكمال التحقق الأمني (Turnstile) أولاً.');
+      return;
+    }
     if (!originalPoemText.trim()) {
       setError('يرجى لصق أو كتابة أبيات القصيدة الأصلية لتطبيق الصناعة عليها.');
       return;
@@ -79,18 +91,25 @@ export default function PoeticIndustries({ isDarkMode, onSavePoemToHistory }: Po
           payload: {
             industryType,
             originalPoem: originalPoemText
-          }
+          },
+          turnstileToken
         })
       });
 
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data && typeof data.remainingDailyUses === 'number') {
+        onUpdateRemainingUses?.(data.remainingDailyUses);
+      }
+      if (!res.ok || data.error) throw new Error(data.error || 'فشل تطبيق الصناعة التراثية المحددة.');
 
       setResult(data);
     } catch (err: any) {
       setError(err.message || 'فشل تطبيق الصناعة التراثية المحددة. يرجى مراجعة صياغة الأبيات والمحاولة ثانية.');
     } finally {
       setGenerating(false);
+      // Reset Turnstile token and increment reset key
+      setTurnstileToken(null);
+      setTurnstileResetKey(prev => prev + 1);
     }
   };
 
@@ -510,10 +529,45 @@ export default function PoeticIndustries({ isDarkMode, onSavePoemToHistory }: Po
                 </div>
               )}
 
+              {turnstileSiteKey && (
+                <div className="mt-4">
+                  <TurnstileWidget
+                    key={turnstileResetKey}
+                    siteKey={turnstileSiteKey}
+                    onVerify={setTurnstileToken}
+                    isDarkMode={isDarkMode}
+                    action={`industries_${industryType}`}
+                  />
+                </div>
+              )}
+
+              {remainingDailyUses !== undefined && (
+                <div className="mt-3 flex items-center justify-between text-xs font-serif font-bold">
+                  <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+                  </span>
+                </div>
+              )}
+
+              {remainingDailyUses === 0 && (
+                <div className={`mt-3 p-4 rounded-xl border text-xs leading-relaxed ${
+                  isDarkMode ? 'bg-[#3b1216]/40 border-red-900/40 text-red-300' : 'bg-red-50 border-red-200 text-red-900'
+                }`}>
+                  <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
+                  <p className="font-serif italic text-[11px]">
+                    عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+                  </p>
+                </div>
+              )}
+
               <button
                 onClick={handleApplyIndustry}
-                disabled={generating || !originalPoemText.trim()}
-                className="w-full mt-4 py-3 bg-[#1a472a] hover:bg-royal-800 text-white font-bold rounded-2xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                disabled={generating || !originalPoemText.trim() || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0}
+                className={`w-full mt-4 py-3 text-white font-bold rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2 ${
+                  (generating || !originalPoemText.trim() || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0)
+                    ? 'bg-gray-400 cursor-not-allowed opacity-75'
+                    : 'bg-[#1a472a] hover:bg-royal-800 cursor-pointer'
+                }`}
               >
                 {generating ? (
                   <>

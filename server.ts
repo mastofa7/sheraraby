@@ -47,6 +47,15 @@ interface RateLimitInfo {
 }
 const ipRequestHistory = new Map<string, RateLimitInfo>();
 
+// In-Memory Daily IP limits for local simulator behavior
+const localDailyLimits = new Map<string, number>();
+
+function getLocalLimitKey(req: express.Request): string {
+  const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
+  const today = new Date().toISOString().slice(0, 10);
+  return `${ip}:${today}`;
+}
+
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 60; // 60 requests per minute
 const SPAM_WINDOW_MS = 2000; // 2 seconds
@@ -113,6 +122,37 @@ function getAiClient(): GoogleGenAI {
   });
 }
 
+// Helper to verify Cloudflare Turnstile token
+async function verifyTurnstileToken(token: string | undefined, secretKey: string | undefined): Promise<boolean> {
+  if (!secretKey) {
+    console.warn('TURNSTILE_SECRET_KEY is not configured in local environment. Bypassing Turnstile verification.');
+    return true;
+  }
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append('secret', secretKey);
+    formData.append('response', token);
+
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    const data: any = await res.json();
+    return !!data.success;
+  } catch (err) {
+    console.error('Error verifying Turnstile token:', err);
+    return false;
+  }
+}
+
 // Diagnostic health endpoint
 app.get('/api/health', (req, res) => {
   const serverKey = process.env.GEMINI_API_KEY;
@@ -131,6 +171,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// App configuration endpoint
+app.get('/api/config', (req, res) => {
+  const key = getLocalLimitKey(req);
+  const currentCount = localDailyLimits.get(key) || 0;
+  res.json({
+    TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY || '',
+    remainingDailyUses: Math.max(0, 10 - currentCount)
+  });
+});
+
 // Developer logs endpoint
 app.get('/api/dev-logs', (req, res) => {
   res.json(devLogs);
@@ -139,9 +189,34 @@ app.get('/api/dev-logs', (req, res) => {
 // Poem generation endpoint
 app.post('/api/generate-poem', async (req, res) => {
   try {
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+    if (currentCount >= 10) {
+      return res.status(429).json({
+        error: 'لقد وصلت إلى الحد اليومي المسموح به (10 استخدامات يومياً). يرجى المحاولة غداً.',
+        remainingDailyUses: 0
+      });
+    }
+
+    const { turnstileToken } = req.body;
+    const isVerified = await verifyTurnstileToken(turnstileToken, process.env.TURNSTILE_SECRET_KEY);
+    if (!isVerified) {
+      return res.status(403).json({
+        error: 'فشل التحقق الأمني. يرجى إعادة المحاولة.'
+      });
+    }
+
     const aiInstance = getAiClient();
     const result = await handleGeneratePoem(req.body, aiInstance);
-    return res.json(result);
+
+    // Increase limit count
+    localDailyLimits.set(key, currentCount + 1);
+
+    const responseData = typeof result === 'object' && result !== null
+      ? { ...result, remainingDailyUses: Math.max(0, 10 - (currentCount + 1)) }
+      : { result, remainingDailyUses: Math.max(0, 10 - (currentCount + 1)) };
+
+    return res.json(responseData);
   } catch (err: any) {
     if (err.message === 'CONFIG_ERROR') {
       console.error('❌ [SUPERVISOR ALERT] CRITICAL: GEMINI_API_KEY is missing from environment variables!');
@@ -157,13 +232,38 @@ app.post('/api/generate-poem', async (req, res) => {
 // Literary tools endpoint
 app.post('/api/literary-tool', async (req, res) => {
   try {
-    const { toolAction, payload } = req.body;
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+    if (currentCount >= 10) {
+      return res.status(429).json({
+        error: 'لقد وصلت إلى الحد اليومي المسموح به (10 استخدامات يومياً). يرجى المحاولة غداً.',
+        remainingDailyUses: 0
+      });
+    }
+
+    const { toolAction, payload, turnstileToken } = req.body;
     if (!toolAction) {
       return res.status(400).json({ error: 'حقل الإجراء (toolAction) مطلوب.' });
     }
+
+    const isVerified = await verifyTurnstileToken(turnstileToken, process.env.TURNSTILE_SECRET_KEY);
+    if (!isVerified) {
+      return res.status(403).json({
+        error: 'فشل التحقق الأمني. يرجى إعادة المحاولة.'
+      });
+    }
+
     const aiInstance = getAiClient();
     const result = await handleLiteraryTool(toolAction, payload, aiInstance);
-    return res.json(result);
+
+    // Increase limit count
+    localDailyLimits.set(key, currentCount + 1);
+
+    const responseData = typeof result === 'object' && result !== null
+      ? { ...result, remainingDailyUses: Math.max(0, 10 - (currentCount + 1)) }
+      : { result, remainingDailyUses: Math.max(0, 10 - (currentCount + 1)) };
+
+    return res.json(responseData);
   } catch (err: any) {
     if (err.message === 'CONFIG_ERROR') {
       console.error('❌ [SUPERVISOR ALERT] CRITICAL: GEMINI_API_KEY is missing from environment variables!');

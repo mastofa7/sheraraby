@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRightLeft, BookOpen, HelpCircle, PenTool, Search, MessageSquare, Clipboard, Check, RefreshCw, Upload, FileText, ChevronRight, Scale, Activity, Glasses, Compass } from 'lucide-react';
 import { PoeticMeterInfo } from '../types';
+import TurnstileWidget from './TurnstileWidget';
 
 interface AdvancedToolsProps {
   meters: PoeticMeterInfo[];
   currentPoem: any;
   onApplyNewPoem: (poem: any) => void;
+  turnstileSiteKey: string;
+  isDarkMode: boolean;
+  onUpdateRemainingUses?: (uses: number) => void;
+  remainingDailyUses?: number | null;
 }
 
-export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedToolsProps) {
+export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, turnstileSiteKey, isDarkMode, onUpdateRemainingUses, remainingDailyUses }: AdvancedToolsProps) {
   const [activeSubTool, setActiveSubTool] = useState<'rhymes' | 'prose2poem' | 'transmute' | 'rhymeChanger' | 'critique' | 'comparison' | 'analyzeProsody' | 'styleTransform' | 'originality' | 'inspiration' | 'rhetorical'>('rhymes');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Turnstile state
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState<number>(0);
 
   // 11. Rhetorical state
   const [rhetoricalText, setRhetoricalText] = useState('');
@@ -73,6 +82,14 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedT
   };
 
   const handleToolSubmit = async (action: string, payload: any) => {
+    if (remainingDailyUses === 0) {
+      setError('عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!');
+      return;
+    }
+    if (turnstileSiteKey && !turnstileToken) {
+      setError('يرجى إكمال التحقق الأمني (Turnstile) أولاً.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -81,10 +98,17 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedT
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ toolAction: action, payload }),
+        body: JSON.stringify({ 
+          toolAction: action, 
+          payload,
+          turnstileToken
+        }),
       });
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      if (data && typeof data.remainingDailyUses === 'number') {
+        onUpdateRemainingUses?.(data.remainingDailyUses);
+      }
+      if (!response.ok || data.error) throw new Error(data.error || 'حدث خطأ أثناء معالجة الأداة الأدبية.');
 
       if (action === 'generate-rhymes') setRhymeResults(data);
       else if (action === 'prose-to-poem') setProseResult(data);
@@ -102,6 +126,9 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedT
       setError(err.message || 'حدث خطأ أثناء معالجة الأداة الأدبية.');
     } finally {
       setLoading(false);
+      // Reset Turnstile token and increment reset key
+      setTurnstileToken(null);
+      setTurnstileResetKey(prev => prev + 1);
     }
   };
 
@@ -114,6 +141,26 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedT
         </h2>
         <p className="text-xs text-gray-500 mt-1">تجهيزات واستشارات عروضية ونقدية متخصصة تحت إشراف نخبة من فحول اللغويين</p>
       </div>
+
+      {remainingDailyUses !== undefined && (
+        <div className="mb-4 flex items-center justify-between text-xs font-serif font-bold bg-amber-500/5 p-3 rounded-xl border border-amber-500/10">
+          <span className="text-[#1a472a]">
+            المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+          </span>
+          {remainingDailyUses === 0 && (
+            <span className="text-red-600 font-bold">⚠️ كنانة المحاولات قد نفدت!</span>
+          )}
+        </div>
+      )}
+
+      {remainingDailyUses === 0 && (
+        <div className="mb-4 p-4 rounded-xl border text-xs leading-relaxed bg-red-50 border-red-200 text-red-900">
+          <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
+          <p className="font-serif italic text-[11px]">
+            عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+          </p>
+        </div>
+      )}
 
       {/* Navigation for Sub-Tools */}
       <div className="flex flex-wrap gap-1.5 border-b border-gray-100 pb-4 mb-6">
@@ -210,6 +257,16 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedT
         <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs mb-4">
           {error}
         </div>
+      )}
+
+      {turnstileSiteKey && remainingDailyUses !== 0 && (
+        <TurnstileWidget
+          key={turnstileResetKey}
+          siteKey={turnstileSiteKey}
+          onVerify={setTurnstileToken}
+          isDarkMode={isDarkMode}
+          action={`literary_tool_${activeSubTool}`}
+        />
       )}
 
       {/* 1. SMART RHYME GENERATOR */}
