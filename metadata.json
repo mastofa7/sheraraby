@@ -1,0 +1,8 @@
+{
+  "name": "صانع الشعر العربي",
+  "description": "تطبيق احترافي متخصص في صناعة الشعر العربي الفصيح ومحاكاة كبار الشعراء وتحليل القصائد باستخدام نماذج ذكاء اصطناعي متقدمة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

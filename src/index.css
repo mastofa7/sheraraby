@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Amiri", "Georgia", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom royal color palette */
+  --color-royal-900: #0a2d1d;
+  --color-royal-800: #0f3f2a;
+  --color-royal-700: #145337;
+  --color-royal-600: #1a6d49;
+  --color-royal-500: #23865a;
+  --color-royal-400: #38a173;
+  --color-royal-300: #5cb88f;
+  --color-royal-200: #8ed2b3;
+  --color-royal-100: #c6ebd9;
+  --color-royal-50: #eefaf3;
+
+  /* Secondary color: Jullanar (deep pomegranate blossom crimson) */
+  --color-jullanar-900: #4a0d17;
+  --color-jullanar-800: #65121e;
+  --color-jullanar-700: #831828;
+  --color-jullanar-600: #a51f33;
+  --color-jullanar-500: #c52b41;
+  --color-jullanar-400: #da4c5f;
+  --color-jullanar-300: #e97a89;
+  --color-jullanar-200: #f4abb5;
+  --color-jullanar-100: #fbd6da;
+  --color-jullanar-50: #fff5f6;
+  
+  /* Manuscript paper effect */
+  --color-manuscript-paper: #fbf9f4;
+  --color-manuscript-border: #e2d9c2;
+}
+
+/* Base modifications for beautiful custom manuscript scrolls and layout */
+body {
+  background-color: #f7f5ed;
+  color: #1a1a1a;
+  font-family: var(--font-sans);
+  direction: rtl;
+}
+
+/* Custom gorgeous styling for classic Arabic bayt */
+.poetry-bayt {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px dashed rgba(131, 24, 40, 0.15);
+  font-family: var(--font-serif);
+}
+
+@media (max-width: 768px) {
+  .poetry-bayt {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+    padding: 1rem 0.5rem;
+  }
+}
+
+.poetry-shatr {
+  flex: 1;
+  font-size: 1.35rem;
+  line-height: 2.2rem;
+  font-weight: 700;
+  color: #111;
+  text-shadow: 0.5px 0.5px 0px rgba(0, 0, 0, 0.05);
+}
+
+.poetry-shatr-1 {
+  text-align: right;
+}
+
+.poetry-shatr-2 {
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .poetry-shatr-1, .poetry-shatr-2 {
+    text-align: center;
+    width: 100%;
+  }
+}
+
+/* Subtle pattern background reminiscent of old manuscript books */
+.manuscript-pattern {
+  background-image: radial-gradient(#d5c39c 0.5px, transparent 0.5px), radial-gradient(#d5c39c 0.5px, #fbf9f4 0.5px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
