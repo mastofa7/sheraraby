@@ -10,9 +10,10 @@ import { Copy, FileText, Share2, Printer, Info, Check, Sparkles, RefreshCw, Chev
 interface PoemDisplayProps {
   poem: GeneratedPoem;
   onReset: () => void;
+  onOpenRevisionWorkspace?: () => void;
 }
 
-export default function PoemDisplay({ poem, onReset }: PoemDisplayProps) {
+export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: PoemDisplayProps) {
   const [copied, setCopied] = useState(false);
   const [copiedVerseIndex, setCopiedVerseIndex] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(true);
@@ -282,6 +283,17 @@ export default function PoemDisplay({ poem, onReset }: PoemDisplayProps) {
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
+          {onOpenRevisionWorkspace && (
+            <button
+              onClick={onOpenRevisionWorkspace}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-[#8b1d2e] to-rose-700 hover:from-rose-800 hover:to-rose-900 text-white shadow-md transition-all cursor-pointer hover:scale-102"
+              title="الدخول لورشة العمل والمراجعة العروضية الفورية"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
+              <span>تحليل وتعديل القصيدة</span>
+            </button>
+          )}
+
           <button
             onClick={handleCopyAll}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-royal-800 bg-white hover:bg-royal-50 transition-colors cursor-pointer"

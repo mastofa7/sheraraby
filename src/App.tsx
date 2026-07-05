@@ -26,7 +26,8 @@ import {
   Music,
   Star,
   ArrowLeftRight,
-  Scissors
+  Scissors,
+  TrendingUp
 } from 'lucide-react';
 import MeterSelector from './components/MeterSelector';
 import PoemDisplay from './components/PoemDisplay';
@@ -34,6 +35,8 @@ import HistoryList from './components/HistoryList';
 import { AdvancedTools } from './components/AdvancedTools';
 import PoeticOpposition from './components/PoeticOpposition';
 import PoeticIndustries from './components/PoeticIndustries';
+import PoemRevisionWorkspace from './components/PoemRevisionWorkspace';
+import { PoetAnalytics } from './components/PoetAnalytics';
 import { METERS_DATA } from './metersData';
 import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 
@@ -134,7 +137,7 @@ export default function App() {
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
 
   // ميزات متقدمة
-  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'meters'>('studio');
+  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'meters' | 'analytics'>('studio');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
   
@@ -156,6 +159,7 @@ export default function App() {
   } | null>(null);
 
   // App-wide lifecycle states
+  const [isRevisionWorkspaceOpen, setIsRevisionWorkspaceOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingQuoteIndex, setLoadingQuoteIndex] = useState<number>(0);
   const [currentPoem, setCurrentPoem] = useState<GeneratedPoem | null>(null);
@@ -552,6 +556,18 @@ export default function App() {
             موسوعة البحور العربية
           </button>
 
+          <button
+            onClick={() => setActiveMainTab('analytics')}
+            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeMainTab === 'analytics'
+                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                : 'text-white/80 hover:bg-white/5'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            تحليلات الشاعر البيانية
+          </button>
+
 
         </div>
       </header>
@@ -610,27 +626,50 @@ export default function App() {
         {/* Active Tab View */}
         {activeMainTab === 'studio' && (
           <div className="space-y-6">
-            {/* Results Area if Poem generated */}
-            {currentPoem && (
-              <div id="poem-results-view" className="scroll-mt-6 animate-fade-in">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className={`text-xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
-                    <Sparkles className="w-5 h-5 text-[#b58d3d]" />
-                    القصيدة المولدة حالياً
-                  </h2>
-                  <button
-                    onClick={() => setCurrentPoem(null)}
-                    className="text-xs text-gray-500 hover:text-royal-800 flex items-center gap-1"
-                  >
-                    إغلاق العرض الحالي <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <PoemDisplay poem={currentPoem} onReset={() => setCurrentPoem(null)} />
-              </div>
-            )}
+            {isRevisionWorkspaceOpen && currentPoem ? (
+              <PoemRevisionWorkspace
+                poem={currentPoem}
+                isDarkMode={isDarkMode}
+                onClose={() => setIsRevisionWorkspaceOpen(false)}
+                onSaveFinal={(revisedPoem) => {
+                  setCurrentPoem(revisedPoem);
+                  const updatedHistory = history.map(p => p.id === revisedPoem.id ? revisedPoem : p);
+                  saveHistoryToStorage(updatedHistory);
+                }}
+              />
+            ) : (
+              <>
+                {/* Results Area if Poem generated */}
+                {currentPoem && (
+                  <div id="poem-results-view" className="scroll-mt-6 animate-fade-in">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className={`text-xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
+                        <Sparkles className="w-5 h-5 text-[#b58d3d]" />
+                        القصيدة المولدة حالياً
+                      </h2>
+                      <button
+                        onClick={() => {
+                          setCurrentPoem(null);
+                          setIsRevisionWorkspaceOpen(false);
+                        }}
+                        className="text-xs text-gray-500 hover:text-royal-800 flex items-center gap-1"
+                      >
+                        إغلاق العرض الحالي <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <PoemDisplay 
+                      poem={currentPoem} 
+                      onReset={() => {
+                        setCurrentPoem(null);
+                        setIsRevisionWorkspaceOpen(false);
+                      }} 
+                      onOpenRevisionWorkspace={() => setIsRevisionWorkspaceOpen(true)}
+                    />
+                  </div>
+                )}
 
-            {/* Input parameters panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Input parameters panel */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Main generator parameters form */}
               <form onSubmit={handleSubmit} className={`lg:col-span-8 border rounded-2xl p-6 shadow-sm flex flex-col gap-6 ${
                 isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/20' : 'bg-white border-[#b58d3d]/20'
@@ -1164,6 +1203,8 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </>
+          )}
           </div>
         )}
 
@@ -1284,6 +1325,12 @@ export default function App() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {activeMainTab === 'analytics' && (
+          <div className="animate-fade-in">
+            <PoetAnalytics history={history} />
           </div>
         )}
 
