@@ -99,7 +99,7 @@ export default function App() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('/.netlify/functions/generate?action=health');
+        const res = await fetch('/api/health');
         if (res.ok) {
           const data = await res.json();
           if (data && data.status === 'ok') {
@@ -168,7 +168,7 @@ export default function App() {
 
   const fetchDevLogs = async () => {
     try {
-      const res = await fetch('/.netlify/functions/generate?action=dev-logs');
+      const res = await fetch('/api/dev-logs');
       if (res.ok) {
         const data = await res.json();
         setDevLogs(data);
@@ -240,13 +240,12 @@ export default function App() {
     setSuggestLoading(true);
     setSuggestions(null);
     try {
-      const response = await fetch('/.netlify/functions/generate?action=literary-tool', {
+      const response = await fetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'literary-tool',
           toolAction: 'suggest-meters-and-purposes',
           payload: { topic: description }
         })
@@ -335,15 +334,12 @@ export default function App() {
         customRhymeLetter: rhymeSystem === 'custom' ? customRhymeLetter : undefined,
       };
 
-      const response = await fetch('/.netlify/functions/generate?action=generate-poem', {
+      const response = await fetch('/api/generate-poem', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...params,
-          action: 'generate-poem'
-        }),
+        body: JSON.stringify(params),
       });
 
       if (!response.ok) {

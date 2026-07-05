@@ -87,13 +87,12 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
     setSavedToArchive(false);
 
     try {
-      const res = await fetch('/.netlify/functions/generate?action=literary-tool', {
+      const res = await fetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'literary-tool',
           toolAction: 'opposition-analyze',
           payload: { poemText: originalPoemText }
         })
@@ -129,13 +128,12 @@ export default function PoeticOpposition({ isDarkMode, onSavePoemToHistory }: Po
     setSavedToArchive(false);
 
     try {
-      const res = await fetch('/.netlify/functions/generate?action=literary-tool', {
+      const res = await fetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'literary-tool',
           toolAction: 'opposition-generate',
           payload: {
             originalPoem: originalPoemText,

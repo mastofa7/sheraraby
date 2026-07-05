@@ -69,13 +69,12 @@ export default function PoeticIndustries({ isDarkMode, onSavePoemToHistory }: Po
     setSavedToArchive(false);
 
     try {
-      const res = await fetch('/.netlify/functions/generate?action=literary-tool', {
+      const res = await fetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'literary-tool',
           toolAction: 'industries-generate',
           payload: {
             industryType,

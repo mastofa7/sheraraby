@@ -31,11 +31,10 @@ export default function PoemDisplay({ poem, onReset }: PoemDisplayProps) {
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      const response = await fetch('/.netlify/functions/generate?action=literary-tool', {
+      const response = await fetch('/api/literary-tool', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'literary-tool',
           toolAction: 'explain-and-extract-rhetoric',
           payload: { verses: poem.verses, meterName: poem.meterName }
         })

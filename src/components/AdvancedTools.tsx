@@ -55,12 +55,12 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem }: AdvancedT
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/.netlify/functions/generate?action=literary-tool', {
+      const response = await fetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'literary-tool', toolAction: action, payload }),
+        body: JSON.stringify({ toolAction: action, payload }),
       });
       const data = await response.json();
       if (data.error) throw new Error(data.error);
