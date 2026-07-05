@@ -164,72 +164,20 @@ export async function onRequest(context: {
       );
     }
 
-    if (path.endsWith('/literary-tool') && method === 'POST') {
-      const body = await request.json();
-      const { toolAction, payload } = body;
+   if (path.endsWith('/literary-tool') && method === 'POST') {
 
-      if (!toolAction) {
-        return new Response(
-          JSON.stringify({
-            error: 'حقل الإجراء (toolAction) مطلوب.'
-          }),
-          {
-            status: 400,
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      }
+  const currentCount =
+    Number(await env.POEM_LIMITS.get(limitKey)) || 0;
 
-      const result = await handleLiteraryTool(
-        toolAction,
-        payload,
-        aiInstance
-      );
+  const DAILY_LIMIT = 10;
 
-      return new Response(
-        JSON.stringify(result),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-    }
-
+  if (currentCount >= DAILY_LIMIT) {
     return new Response(
       JSON.stringify({
-        error: 'الرابط المطلوب غير موجود.'
+        error: 'لقد وصلت إلى الحد اليومي المسموح به (10 استخدامات يومياً). يرجى المحاولة غداً.'
       }),
       {
-        status: 404,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-  } catch (err: any) {
-
-    console.error('Error handling API request:', err);
-
-    addDevLog(
-      path,
-      null,
-      err.message || String(err)
-    );
-
-    return new Response(
-      JSON.stringify({
-        error: err.message || 'حدث خطأ فني غير متوقع.'
-      }),
-      {
-        status: 500,
+        status: 429,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
@@ -237,4 +185,47 @@ export async function onRequest(context: {
       }
     );
   }
+
+  await env.POEM_LIMITS.put(
+    limitKey,
+    String(currentCount + 1),
+    {
+      expirationTtl: 60 * 60 * 24
+    }
+  );
+
+  const body = await request.json();
+  const { toolAction, payload } = body;
+
+  if (!toolAction) {
+    return new Response(
+      JSON.stringify({
+        error: 'حقل الإجراء (toolAction) مطلوب.'
+      }),
+      {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+
+  const result = await handleLiteraryTool(
+    toolAction,
+    payload,
+    aiInstance
+  );
+
+  return new Response(
+    JSON.stringify(result),
+    {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
 }
