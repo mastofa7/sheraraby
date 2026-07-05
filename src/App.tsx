@@ -475,28 +475,6 @@ export default function App() {
             <span className="text-[10px] uppercase font-mono tracking-widest text-white/50 hidden md:inline-block">
               v2.6.0 • نشط
             </span>
-
-            <button
-              onClick={() => setShowLogsPanel(!showLogsPanel)}
-              className={`text-[11px] font-sans border px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 font-bold ${
-                showLogsPanel
-                  ? 'bg-red-900 border-red-500 text-white'
-                  : isDarkMode
-                  ? 'border-[#dfba6b]/30 bg-[#152e1f] text-[#dfba6b] hover:bg-[#1f422e]'
-                  : 'border-[#b58d3d]/30 bg-red-50 text-[#8b1d2e] hover:bg-red-100'
-              }`}
-            >
-              🛠️ سجل المطور {showLogsPanel ? '▲' : '▼'}
-            </button>
-
-            {!isGeminiConnected && (
-              <div className="flex items-center gap-2 border-r border-white/10 pr-3 mr-1 bg-red-500/10 px-3 py-1.5 rounded-xl border border-red-500/20">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[11px] text-red-200 font-serif">
-                  تنبيه للمشرف: مفتاح API غير مهيأ في Vercel
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1311,51 +1289,6 @@ export default function App() {
 
 
 
-        {showLogsPanel && (
-          <div className={`mt-8 border-t-2 border-red-800 rounded-2xl p-6 shadow-md animate-fade-in text-right ${
-            isDarkMode ? 'bg-[#0f1512] text-gray-100' : 'bg-red-50/50 text-gray-800'
-          }`}>
-            <div className="flex items-center justify-between border-b border-dashed border-red-200 pb-3 mb-4 flex-row-reverse">
-              <h3 className="font-serif font-bold text-lg text-[#8b1d2e] dark:text-[#dfba6b] flex items-center gap-2 flex-row-reverse">
-                🛠️ لوحة تتبع وسجلات أخطاء المطور (Developer Diagnostic Logs)
-              </h3>
-              <button 
-                onClick={fetchDevLogs}
-                className="bg-[#1a472a] hover:bg-[#153a22] text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer"
-              >
-                تحديث السجل 🔄
-              </button>
-            </div>
-
-            {devLogs.length === 0 ? (
-              <p className="text-xs text-gray-500 italic text-center py-4">
-                لم يتم تسجيل أي أخطاء أو عمليات فشل حتى الآن. النظام يعمل بكفاءة تامة.
-              </p>
-            ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {devLogs.map((log, index) => (
-                  <div key={index} className="p-4 rounded-xl border border-red-200 bg-white dark:bg-[#152019] text-xs">
-                    <div className="flex justify-between items-center mb-2 font-mono text-[10px] text-gray-400 flex-row-reverse">
-                      <span>أداة: <strong className="text-red-700 dark:text-red-400">{log.tool}</strong></span>
-                      <span>{new Date(log.timestamp).toLocaleString('ar-EG')}</span>
-                    </div>
-                    <p className="font-bold text-[#8b1d2e] dark:text-red-300 mb-2">● السبب: {log.errorReason}</p>
-                    {log.rawResponse && (
-                      <details className="mt-2 bg-gray-50 dark:bg-gray-900 p-2.5 rounded-lg border border-gray-150">
-                        <summary className="cursor-pointer text-[10px] font-bold text-gray-500 hover:text-gray-700 select-none">
-                          عرض الاستجابة الخام من النموذج (Raw API Response)
-                        </summary>
-                        <pre className="mt-2 whitespace-pre-wrap font-mono text-[10px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-black/40 p-2 rounded max-h-48 overflow-y-auto text-left" dir="ltr">
-                          {log.rawResponse}
-                        </pre>
-                      </details>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
       </main>
 
