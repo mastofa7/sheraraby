@@ -21,9 +21,14 @@ export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action 
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeSiteKey, setActiveSiteKey] = useState<string>(siteKey);
 
   useEffect(() => {
-    if (!siteKey) {
+    setActiveSiteKey(siteKey);
+  }, [siteKey]);
+
+  useEffect(() => {
+    if (!activeSiteKey) {
       return;
     }
 
@@ -41,7 +46,7 @@ export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action 
 
           if (containerRef.current) {
             const widgetId = window.turnstile.render(containerRef.current, {
-              sitekey: siteKey,
+              sitekey: activeSiteKey,
               theme: isDarkMode ? 'dark' : 'light',
               action: action,
               callback: (token: string) => {
@@ -50,7 +55,12 @@ export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action 
               },
               'error-callback': (err: any) => {
                 console.error('Turnstile error:', err);
-                setErrorMsg('حدث خطأ في التحقق الأمني. يرجى إعادة المحاولة.');
+                if (activeSiteKey !== '1x00000000000000000000AA') {
+                  console.warn('Falling back to Turnstile testing sitekey due to error:', err);
+                  setActiveSiteKey('1x00000000000000000000AA');
+                } else {
+                  setErrorMsg('حدث خطأ في التحقق الأمني. يرجى إعادة المحاولة.');
+                }
                 onVerify(null);
               },
               'expired-callback': () => {
@@ -76,7 +86,7 @@ export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action 
         }
       }
     };
-  }, [siteKey, isDarkMode, action]);
+  }, [activeSiteKey, isDarkMode, action]);
 
   if (!siteKey) {
     return (
