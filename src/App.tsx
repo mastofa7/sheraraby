@@ -137,7 +137,13 @@ export default function App() {
       setUser(result.user);
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('حدث خطأ أثناء تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.');
+      if (err && (err.code === 'auth/popup-closed-by-user' || String(err).includes('popup-closed-by-user') || String(err.message).includes('popup-closed-by-user'))) {
+        setError(
+          'تم إغلاق نافذة تسجيل الدخول من قِبل المتصفح أو المستخدم. يرجى السماح بالنوافذ المنبثقة (Popups) وإعادة المحاولة، أو يمكنك فتح التطبيق في علامة تبويب جديدة لتسجيل الدخول بسلاسة.'
+        );
+      } else {
+        setError(err.message || 'حدث خطأ أثناء تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.');
+      }
     }
   };
 
@@ -763,6 +769,21 @@ export default function App() {
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 flex flex-col gap-6 relative">
+        
+        {error && (
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl text-red-900 dark:text-red-200 text-xs md:text-sm flex items-center justify-between gap-4 shadow-sm animate-fade-in relative z-30">
+            <div className="flex items-center gap-3">
+              <span className="text-xl shrink-0">⚠️</span>
+              <p className="font-serif font-semibold leading-relaxed text-right">{error}</p>
+            </div>
+            <button 
+              onClick={() => setError(null)}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer shrink-0"
+            >
+              إغلاق
+            </button>
+          </div>
+        )}
         
         {/* Banner quote */}
         <div className={`border transition-colors duration-300 rounded-2xl p-5 shadow-sm relative overflow-hidden flex items-center gap-4 ${
