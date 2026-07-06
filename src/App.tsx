@@ -27,7 +27,8 @@ import {
   Star,
   ArrowLeftRight,
   Scissors,
-  TrendingUp
+  TrendingUp,
+  Crown
 } from 'lucide-react';
 import MeterSelector from './components/MeterSelector';
 import PoemDisplay from './components/PoemDisplay';
@@ -37,9 +38,14 @@ import PoeticOpposition from './components/PoeticOpposition';
 import PoeticIndustries from './components/PoeticIndustries';
 import PoemRevisionWorkspace from './components/PoemRevisionWorkspace';
 import { PoetAnalytics } from './components/PoetAnalytics';
+import AdminDashboard from './components/AdminDashboard';
+import SubscriptionPlans from './components/SubscriptionPlans';
 import { METERS_DATA } from './metersData';
 import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 import TurnstileWidget from './components/TurnstileWidget';
+
+import { auth, googleProvider, apiFetch } from './firebase';
+import { signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
 // Sliding educational/literary quotes to entertain the user while generating (which can take 10-15s due to long verses)
 const LOADING_QUOTES = [
@@ -100,6 +106,9 @@ export default function App() {
   const [isGeminiConnected, setIsGeminiConnected] = useState<boolean>(true);
   const [checkingHealth, setCheckingHealth] = useState<boolean>(true);
 
+  // نظام تسجيل الدخول الاحترافي
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+
   // Cloudflare Turnstile States
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -107,11 +116,56 @@ export default function App() {
 
   // Remaining Daily Uses State
   const [remainingDailyUses, setRemainingDailyUses] = useState<number | null>(null);
+  const [userPlanId, setUserPlanId] = useState<string>('visitor');
+  const [userPlanLimit, setUserPlanLimit] = useState<number>(10);
+
+  // Listen to Auth State Changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const handleSignInWithGoogle = async () => {
+    try {
+      setError(null);
+      const result = await signInWithPopup(auth, googleProvider);
+      setUser(result.user);
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError('حدث خطأ أثناء تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      setError(null);
+      await signOut(auth);
+      setUser(null);
+    } catch (err: any) {
+      console.error('Logout error:', err);
+      setError('حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى.');
+    }
+  };
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('/api/config');
+        // Sync plan backup from local storage if existing on reload/mount
+        const savedBackup = localStorage.getItem('user_subscription_plan_backup');
+        if (savedBackup) {
+          await apiFetch('/api/user/plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan: savedBackup })
+          }).catch(() => {});
+        }
+
+        const res = await apiFetch('/api/config');
         if (res.ok) {
           const data = await res.json();
           if (data && data.TURNSTILE_SITE_KEY) {
@@ -120,18 +174,24 @@ export default function App() {
           if (data && typeof data.remainingDailyUses === 'number') {
             setRemainingDailyUses(data.remainingDailyUses);
           }
+          if (data && data.planId) {
+            setUserPlanId(data.planId);
+          }
+          if (data && typeof data.maxLimit === 'number') {
+            setUserPlanLimit(data.maxLimit);
+          }
         }
       } catch (e) {
         console.error('Failed to load Turnstile sitekey:', e);
       }
     };
     fetchConfig();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('/api/health');
+        const res = await apiFetch('/api/health');
         if (res.ok) {
           const data = await res.json();
           if (data && data.status === 'ok') {
@@ -166,7 +226,7 @@ export default function App() {
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
 
   // ميزات متقدمة
-  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'meters' | 'analytics'>('studio');
+  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'meters' | 'analytics' | 'admin'>('studio');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
   
@@ -201,7 +261,7 @@ export default function App() {
 
   const fetchDevLogs = async () => {
     try {
-      const res = await fetch('/api/dev-logs');
+      const res = await apiFetch('/api/dev-logs');
       if (res.ok) {
         const data = await res.json();
         setDevLogs(data);
@@ -273,7 +333,7 @@ export default function App() {
     setSuggestLoading(true);
     setSuggestions(null);
     try {
-      const response = await fetch('/api/literary-tool', {
+      const response = await apiFetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -373,7 +433,7 @@ export default function App() {
         customRhymeLetter: rhymeSystem === 'custom' ? customRhymeLetter : undefined,
       };
 
-      const response = await fetch('/api/generate-poem', {
+      const response = await apiFetch('/api/generate-poem', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -502,6 +562,48 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* نظام تسجيل الدخول الاحترافي */}
+            {user ? (
+              <div className="flex items-center gap-2 border border-[#dfba6b]/30 bg-black/20 p-1.5 rounded-xl">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'الحساب'}
+                    referrerPolicy="no-referrer"
+                    className="w-7 h-7 rounded-full border border-[#dfba6b]/40 shadow-xs shrink-0"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-amber-500/10 border border-[#dfba6b]/40 flex items-center justify-center text-xs font-serif font-black text-[#dfba6b] shrink-0">
+                    {user.displayName ? user.displayName.slice(0, 1) : 'ش'}
+                  </div>
+                )}
+                <div className="hidden md:flex flex-col text-right pl-2 shrink-0">
+                  <span className="text-[10px] font-bold text-white leading-tight">{user.displayName}</span>
+                  <span className="text-[8px] text-[#dfba6b] leading-none">مستشار مسجل</span>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="px-2.5 py-1.5 bg-red-600/80 hover:bg-red-700 text-white text-[9px] font-bold rounded-lg transition-all cursor-pointer shrink-0"
+                >
+                  خروج
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleSignInWithGoogle}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-800 hover:bg-gray-100 text-xs font-bold rounded-xl transition-all border border-gray-200 shadow-sm cursor-pointer shrink-0"
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                <span className="hidden sm:inline">دخول بـ Google</span>
+                <span className="sm:hidden">دخول</span>
+              </button>
+            )}
+
             {/* Dark Mode Toggle */}
             <button
               onClick={handleToggleDarkMode}
@@ -515,13 +617,29 @@ export default function App() {
               {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            <span className={`text-xs border px-3 py-1.5 rounded-lg font-serif hidden sm:inline-block ${
-              isDarkMode ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]' : 'border-[#b58d3d]/30 bg-[#1a472a]/50 text-[#b58d3d]'
-            }`}>
-              ديوان العرب الرقمي
-            </span>
+            {/* Subscription status display in header */}
+            <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 select-none ${
+              userPlanId === 'gold'
+                ? 'border-amber-400 bg-amber-500/15 text-amber-300 shadow-xs'
+                : userPlanId === 'silver'
+                ? 'border-slate-300 bg-slate-400/15 text-slate-100'
+                : isDarkMode
+                ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]'
+                : 'border-[#b58d3d]/30 bg-[#1a472a]/50 text-white'
+            }`}
+            onClick={() => setActiveMainTab('subscriptions')}
+            title="إدارة الباقة والعدادات الأدبية"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+              <span>الباقة: {userPlanId === 'gold' ? 'الذهبية' : userPlanId === 'silver' ? 'الفضية' : userPlanId === 'free' ? 'المجانية' : 'الزائر'}</span>
+              {remainingDailyUses !== null && (
+                <span className="text-[10px] opacity-85 border-r border-white/20 pr-1.5 font-sans mr-0.5">
+                  {remainingDailyUses} متبقي
+                </span>
+              )}
+            </div>
 
-            <span className="text-[10px] uppercase font-mono tracking-widest text-white/50 hidden md:inline-block">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-white/50 hidden xl:inline-block">
               v2.6.0 • نشط
             </span>
           </div>
@@ -612,6 +730,32 @@ export default function App() {
             <TrendingUp className="w-3.5 h-3.5" />
             تحليلات الشاعر البيانية
           </button>
+
+          <button
+            onClick={() => setActiveMainTab('subscriptions')}
+            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeMainTab === 'subscriptions'
+                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                : 'text-amber-400 border border-amber-500/30 hover:bg-amber-500/10'
+            }`}
+          >
+            <Crown className="w-3.5 h-3.5" />
+            الاشتراكات وباقات الترقية
+          </button>
+
+          {user && user.email === 'mw9392000@gmail.com' && (
+            <button
+              onClick={() => setActiveMainTab('admin')}
+              className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border ${
+                activeMainTab === 'admin'
+                  ? 'bg-amber-500 text-amber-950 border-amber-400 shadow-md'
+                  : 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              لوحة التحكم الإدارية
+            </button>
+          )}
 
 
         </div>
@@ -1198,7 +1342,7 @@ export default function App() {
                 {/* Remaining uses indicator */}
                 <div className="flex items-center justify-between text-xs font-serif font-bold mt-2">
                   <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
-                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من ${user ? 30 : 10}` : '...'}
                   </span>
                 </div>
 
@@ -1208,7 +1352,9 @@ export default function App() {
                   }`}>
                     <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
                     <p className="font-serif italic text-xs">
-                      عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+                      {user
+                        ? 'ثلاثون سِهاماً أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!'
+                        : 'عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي! يمكنك تسجيل الدخول لزيادة حدك إلى ٣٠ محاولة.'}
                     </p>
                   </div>
                 )}
@@ -1293,6 +1439,7 @@ export default function App() {
               }}
               onUpdateRemainingUses={setRemainingDailyUses}
               remainingDailyUses={remainingDailyUses}
+              isRegisteredUser={!!user}
             />
           </div>
         )}
@@ -1309,6 +1456,7 @@ export default function App() {
               }}
               onUpdateRemainingUses={setRemainingDailyUses}
               remainingDailyUses={remainingDailyUses}
+              isRegisteredUser={!!user}
             />
           </div>
         )}
@@ -1322,6 +1470,7 @@ export default function App() {
               isDarkMode={isDarkMode}
               onUpdateRemainingUses={setRemainingDailyUses}
               remainingDailyUses={remainingDailyUses}
+              isRegisteredUser={!!user}
               onApplyNewPoem={(poem) => {
                 setCurrentPoem(poem);
                 if (poem && !history.some(p => p.id === poem.id)) {
@@ -1414,6 +1563,26 @@ export default function App() {
         {activeMainTab === 'analytics' && (
           <div className="animate-fade-in">
             <PoetAnalytics history={history} />
+          </div>
+        )}
+
+        {activeMainTab === 'subscriptions' && (
+          <div className="animate-fade-in">
+            <SubscriptionPlans 
+              isDarkMode={isDarkMode} 
+              user={user}
+              onUpdateRemainingUses={(uses) => setRemainingDailyUses(uses)}
+              onUpdateUserPlanId={(id) => setUserPlanId(id)}
+            />
+          </div>
+        )}
+
+        {activeMainTab === 'admin' && user && user.email === 'mw9392000@gmail.com' && (
+          <div className="animate-fade-in">
+            <AdminDashboard 
+              isDarkMode={isDarkMode} 
+              onBackToStudio={() => setActiveMainTab('studio')} 
+            />
           </div>
         )}
 

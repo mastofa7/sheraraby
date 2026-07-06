@@ -24,6 +24,7 @@ import {
   Info
 } from 'lucide-react';
 import TurnstileWidget from './TurnstileWidget';
+import { apiFetch } from '../firebase';
 
 interface PoeticOppositionProps {
   isDarkMode: boolean;
@@ -31,9 +32,10 @@ interface PoeticOppositionProps {
   onSavePoemToHistory: (poem: GeneratedPoem) => void;
   onUpdateRemainingUses?: (uses: number) => void;
   remainingDailyUses?: number | null;
+  isRegisteredUser?: boolean;
 }
 
-export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSavePoemToHistory, onUpdateRemainingUses, remainingDailyUses }: PoeticOppositionProps) {
+export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSavePoemToHistory, onUpdateRemainingUses, remainingDailyUses, isRegisteredUser }: PoeticOppositionProps) {
   // Original poem state
   const [originalPoemText, setOriginalPoemText] = useState('');
   
@@ -99,7 +101,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
     setSavedToArchive(false);
 
     try {
-      const res = await fetch('/api/literary-tool', {
+      const res = await apiFetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -151,7 +153,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
     setSavedToArchive(false);
 
     try {
-      const res = await fetch('/api/literary-tool', {
+      const res = await apiFetch('/api/literary-tool', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -500,7 +502,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
               {remainingDailyUses !== undefined && (
                 <div className="mt-3 flex items-center justify-between text-xs font-serif font-bold">
                   <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
-                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من 10` : '...'}
+                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من ${isRegisteredUser ? 30 : 10}` : '...'}
                   </span>
                 </div>
               )}
@@ -511,7 +513,9 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
                 }`}>
                   <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
                   <p className="font-serif italic text-[11px]">
-                    عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!
+                    {isRegisteredUser
+                      ? 'ثلاثون سِهاماً أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي!'
+                      : 'عشرةُ سِهامٍ أُطلِقَت في فضاء البلاغة اليوم، وقَد استنفدتَ كِنانة محاولاتك لِهذا اليوم. نرجو من قرائحكَ الفذّة الاستراحة قليلًا والعودة إلينا غداً لنظم أبهى القوافي! يمكنك تسجيل الدخول لزيادة حدك إلى ٣٠ محاولة.'}
                   </p>
                 </div>
               )}
