@@ -118,11 +118,15 @@ export default function App() {
   const [remainingDailyUses, setRemainingDailyUses] = useState<number | null>(null);
   const [userPlanId, setUserPlanId] = useState<string>('visitor');
   const [userPlanLimit, setUserPlanLimit] = useState<number>(10);
+  const [userRole, setUserRole] = useState<'admin' | 'user'>('user');
 
   // Listen to Auth State Changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (!currentUser) {
+        setUserRole('user');
+      }
     });
 
     return () => {
@@ -152,6 +156,7 @@ export default function App() {
       setError(null);
       await signOut(auth);
       setUser(null);
+      setUserRole('user');
     } catch (err: any) {
       console.error('Logout error:', err);
       setError('حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى.');
@@ -186,6 +191,13 @@ export default function App() {
           if (data && typeof data.maxLimit === 'number') {
             setUserPlanLimit(data.maxLimit);
           }
+          if (data && data.role) {
+            setUserRole(data.role);
+          } else {
+            setUserRole('user');
+          }
+        } else {
+          setUserRole('user');
         }
       } catch (e) {
         console.error('Failed to load Turnstile sitekey:', e);
@@ -233,6 +245,16 @@ export default function App() {
 
   // ميزات متقدمة
   const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'meters' | 'analytics' | 'admin'>('studio');
+
+  // Secure Redirection: If non-admin attempts to access admin tab, redirect silently to studio
+  useEffect(() => {
+    if (activeMainTab === 'admin') {
+      const isAdmin = user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin');
+      if (!isAdmin) {
+        setActiveMainTab('studio');
+      }
+    }
+  }, [activeMainTab, user, userRole]);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
   
@@ -637,10 +659,10 @@ export default function App() {
             title="إدارة الباقة والعدادات الأدبية"
             >
               <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-              <span>الباقة: {userPlanId === 'gold' ? 'الذهبية' : userPlanId === 'silver' ? 'الفضية' : userPlanId === 'free' ? 'المجانية' : 'الزائر'}</span>
+              <span>الباقة: {userRole === 'admin' ? 'المالك / بلا حدود' : (userPlanId === 'gold' ? 'الذهبية' : userPlanId === 'silver' ? 'الفضية' : userPlanId === 'free' ? 'المجانية' : 'الزائر')}</span>
               {remainingDailyUses !== null && (
                 <span className="text-[10px] opacity-85 border-r border-white/20 pr-1.5 font-sans mr-0.5">
-                  {remainingDailyUses} متبقي
+                  {userRole === 'admin' ? '∞' : remainingDailyUses} متبقي
                 </span>
               )}
             </div>
@@ -749,7 +771,7 @@ export default function App() {
             الاشتراكات وباقات الترقية
           </button>
 
-          {user && user.email === 'mw9392000@gmail.com' && (
+          {user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
             <button
               onClick={() => setActiveMainTab('admin')}
               className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border ${
@@ -1598,7 +1620,7 @@ export default function App() {
           </div>
         )}
 
-        {activeMainTab === 'admin' && user && user.email === 'mw9392000@gmail.com' && (
+        {activeMainTab === 'admin' && user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
           <div className="animate-fade-in">
             <AdminDashboard 
               isDarkMode={isDarkMode} 

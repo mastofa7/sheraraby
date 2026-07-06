@@ -107,6 +107,10 @@ const localDailyLimits = new Map<string, number>();
 // --- ADMIN TELEMETRY TRACKING ENGINE ---
 const ADMIN_EMAILS = ['mw9392000@gmail.com'];
 
+function isUserAdmin(req: any): boolean {
+  return !!(req.user && req.user.email && ADMIN_EMAILS.includes(req.user.email));
+}
+
 interface StatsToday {
   uniqueUsers: Set<string>;
   registeredUsersCount: number;
@@ -282,6 +286,9 @@ const SPAM_WINDOW_MS = 2000; // 2 seconds
 const MAX_REQUESTS_SPAM = 15; // Max 15 requests in 2 seconds (safely bypasses standard concurrent load spikes and React StrictMode)
 
 function rateLimiterAndSpamProtection(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (isUserAdmin(req)) {
+    return next();
+  }
   const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown-ip';
   const now = Date.now();
 
@@ -416,6 +423,7 @@ app.get('/api/config', (req: any, res) => {
   const currentCount = localDailyLimits.get(key) || 0;
   const maxLimit = getMaxDailyUses(req);
   const planId = getUserPlan(req);
+  const isAdmin = isUserAdmin(req);
   
   // If we are in local development or preview mode (e.g. *.run.app), return the testing sitekey to avoid error 110200
   const isDev = isDevOrPreview(req);
@@ -425,10 +433,11 @@ app.get('/api/config', (req: any, res) => {
 
   res.json({
     TURNSTILE_SITE_KEY: siteKey,
-    remainingDailyUses: Math.max(0, maxLimit - currentCount),
-    maxLimit,
+    remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - currentCount),
+    maxLimit: isAdmin ? 99999 : maxLimit,
     usedToday: currentCount,
-    planId
+    planId,
+    role: isAdmin ? 'admin' : 'user'
   });
 });
 
@@ -438,14 +447,16 @@ app.get('/api/user/plan', (req: any, res) => {
   const key = getLocalLimitKey(req);
   const currentCount = localDailyLimits.get(key) || 0;
   const maxLimit = getMaxDailyUses(req);
+  const isAdmin = isUserAdmin(req);
 
   res.json({
     planId,
     plan: SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS],
-    maxLimit,
+    maxLimit: isAdmin ? 99999 : maxLimit,
     usedToday: currentCount,
-    remainingDailyUses: Math.max(0, maxLimit - currentCount),
-    allPlans: SUBSCRIPTION_PLANS
+    remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - currentCount),
+    allPlans: SUBSCRIPTION_PLANS,
+    role: isAdmin ? 'admin' : 'user'
   });
 });
 
@@ -532,8 +543,10 @@ app.get('/api/admin/stats', async (req: any, res) => {
 // Poem generation endpoint
 app.post('/api/generate-poem', async (req: any, res) => {
   try {
-    // Check Global Limit first
-    if (statsToday.globalUsageCount >= 2000) {
+    const isAdmin = isUserAdmin(req);
+
+    // Check Global Limit first (skip for Admin)
+    if (!isAdmin && statsToday.globalUsageCount >= 2000) {
       trackTelemetry(req, 'reject_global');
       return res.status(429).json({
         error: 'لقد تم الوصول إلى الحد الأقصى للاستخدام العالمي اليوم لهذا النظام (2000 استخدام). يرجى المحاولة غداً أو التواصل مع الإدارة.',
@@ -544,7 +557,7 @@ app.post('/api/generate-poem', async (req: any, res) => {
     const maxLimit = getMaxDailyUses(req);
     const key = getLocalLimitKey(req);
     const currentCount = localDailyLimits.get(key) || 0;
-    if (currentCount >= maxLimit) {
+    if (!isAdmin && currentCount >= maxLimit) {
       trackTelemetry(req, 'reject_daily');
       return res.status(429).json({
         error: `لقد وصلت إلى الحد اليومي المسموح به (${maxLimit} استخدامات يومياً). يرجى المحاولة غداً.`,
@@ -554,7 +567,7 @@ app.post('/api/generate-poem', async (req: any, res) => {
 
     const { turnstileToken } = req.body;
     const isDev = isDevOrPreview(req);
-    const isVerified = await verifyTurnstileToken(turnstileToken, process.env.TURNSTILE_SECRET_KEY, isDev);
+    const isVerified = isAdmin ? true : await verifyTurnstileToken(turnstileToken, process.env.TURNSTILE_SECRET_KEY, isDev);
     if (!isVerified) {
       trackTelemetry(req, 'reject_turnstile');
       return res.status(403).json({
@@ -570,12 +583,14 @@ app.post('/api/generate-poem', async (req: any, res) => {
     // Track successful poem generation
     trackTelemetry(req, 'success_poem', { duration });
 
-    // Increase limit count
-    localDailyLimits.set(key, currentCount + 1);
+    // Increase limit count for normal users only
+    if (!isAdmin) {
+      localDailyLimits.set(key, currentCount + 1);
+    }
 
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1)) }
-      : { result, remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1)) };
+      ? { ...result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) }
+      : { result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) };
 
     return res.json(responseData);
   } catch (err: any) {
@@ -593,8 +608,10 @@ app.post('/api/generate-poem', async (req: any, res) => {
 // Literary tools endpoint
 app.post('/api/literary-tool', async (req: any, res) => {
   try {
-    // Check Global Limit first
-    if (statsToday.globalUsageCount >= 2000) {
+    const isAdmin = isUserAdmin(req);
+
+    // Check Global Limit first (skip for Admin)
+    if (!isAdmin && statsToday.globalUsageCount >= 2000) {
       trackTelemetry(req, 'reject_global');
       return res.status(429).json({
         error: 'لقد تم الوصول إلى الحد الأقصى للاستخدام العالمي اليوم لهذا النظام (2000 استخدام). يرجى المحاولة غداً أو التواصل مع الإدارة.',
@@ -605,7 +622,7 @@ app.post('/api/literary-tool', async (req: any, res) => {
     const maxLimit = getMaxDailyUses(req);
     const key = getLocalLimitKey(req);
     const currentCount = localDailyLimits.get(key) || 0;
-    if (currentCount >= maxLimit) {
+    if (!isAdmin && currentCount >= maxLimit) {
       trackTelemetry(req, 'reject_daily');
       return res.status(429).json({
         error: `لقد وصلت إلى الحد اليومي المسموح به (${maxLimit} استخدامات يومياً). يرجى المحاولة غداً.`,
@@ -619,7 +636,7 @@ app.post('/api/literary-tool', async (req: any, res) => {
     }
 
     const isDev = isDevOrPreview(req);
-    const isVerified = await verifyTurnstileToken(turnstileToken, process.env.TURNSTILE_SECRET_KEY, isDev);
+    const isVerified = isAdmin ? true : await verifyTurnstileToken(turnstileToken, process.env.TURNSTILE_SECRET_KEY, isDev);
     if (!isVerified) {
       trackTelemetry(req, 'reject_turnstile');
       return res.status(403).json({
@@ -635,12 +652,14 @@ app.post('/api/literary-tool', async (req: any, res) => {
     // Track successful tool execution
     trackTelemetry(req, 'success_tool', { duration, toolAction });
 
-    // Increase limit count
-    localDailyLimits.set(key, currentCount + 1);
+    // Increase limit count for normal users only
+    if (!isAdmin) {
+      localDailyLimits.set(key, currentCount + 1);
+    }
 
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1)) }
-      : { result, remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1)) };
+      ? { ...result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) }
+      : { result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) };
 
     return res.json(responseData);
   } catch (err: any) {
