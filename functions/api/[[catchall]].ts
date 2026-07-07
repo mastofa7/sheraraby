@@ -34,10 +34,14 @@ function decodeFirebaseToken(token: string): any {
   }
 }
 
-async function fetchFirestoreDocuments(collection: string): Promise<any[]> {
+async function fetchFirestoreDocuments(collection: string, token?: string): Promise<any[]> {
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/${FIREBASE_CONFIG.databaseId}/documents/${collection}?key=${FIREBASE_CONFIG.apiKey}&pageSize=1000`;
-    const res = await fetch(url);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(url, { headers });
     if (!res.ok) return [];
     const data: any = await res.json();
     if (!data.documents) return [];
@@ -348,10 +352,10 @@ export async function onRequest(context: {
       };
 
       try {
-        const users = await fetchFirestoreDocuments('users');
+        const users = await fetchFirestoreDocuments('users', token);
         stats.registeredUsers = users.length;
 
-        const logs = await fetchFirestoreDocuments('usage_logs');
+        const logs = await fetchFirestoreDocuments('usage_logs', token);
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
@@ -482,7 +486,7 @@ export async function onRequest(context: {
       }
 
       try {
-        const realUsers = await fetchFirestoreDocuments('users');
+        const realUsers = await fetchFirestoreDocuments('users', token);
 
         let totalSubscribers = 0;
         let proSubscribers = 0; // silver
@@ -551,7 +555,7 @@ export async function onRequest(context: {
       }
 
       try {
-        const poems = await fetchFirestoreDocuments('poems');
+        const poems = await fetchFirestoreDocuments('poems', token);
         poems.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
         return new Response(

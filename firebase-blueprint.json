@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "User subscription plan and profile details",
+      "type": "object",
+      "properties": {
+        "planId": { "type": "string" },
+        "email": { "type": "string" },
+        "subscriptionStatus": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["planId", "subscriptionStatus"]
+    },
+    "poem": {
+      "title": "Poem",
+      "description": "A saved poem created by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "title": { "type": "string" },
+        "verses": { "type": "array" },
+        "meterName": { "type": "string" },
+        "rhymeLetter": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "verses"]
+    },
+    "usage_log": {
+      "title": "Usage Log",
+      "description": "Telemetry and rate limiting log for user actions",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "ip": { "type": "string" }
+      },
+      "required": ["type", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "user",
+      "description": "Store users profile and subscriptions"
+    },
+    "poems/{poemId}": {
+      "schema": "poem",
+      "description": "Store poems saved by users"
+    },
+    "usage_logs/{logId}": {
+      "schema": "usage_log",
+      "description": "Store usage logs for system telemetry and analytics"
+    }
+  }
+}
