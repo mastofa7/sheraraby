@@ -1,8 +1,9 @@
 {
   "projectId": "sheraraby-d3aa5",
-  "appId": "1:127579231582:web:974c56eb8564c29d5b6bcf",
+  "appId": "1:127579231582:web:18d0896be6d243065b6bcf",
   "apiKey": "AIzaSyAlYWPr6RBs6uuhjDRkeordRYTgJGO5Uh8",
   "authDomain": "sheraraby-d3aa5.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-18396f4b-7e89-42f0-84f2-2863a3273d37",
   "storageBucket": "sheraraby-d3aa5.firebasestorage.app",
   "messagingSenderId": "127579231582",
   "measurementId": ""

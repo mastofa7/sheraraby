@@ -21,6 +21,7 @@ interface PlanDetail {
   name: string;
   limit: number;
   features: string[];
+  price?: string;
 }
 
 interface SubscriptionPlansProps {
@@ -28,13 +29,15 @@ interface SubscriptionPlansProps {
   user: any;
   onUpdateRemainingUses: (uses: number) => void;
   onUpdateUserPlanId?: (planId: string) => void;
+  onSignIn?: () => void;
 }
 
 export default function SubscriptionPlans({ 
   isDarkMode, 
   user, 
   onUpdateRemainingUses,
-  onUpdateUserPlanId
+  onUpdateUserPlanId,
+  onSignIn
 }: SubscriptionPlansProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +83,21 @@ export default function SubscriptionPlans({
     fetchSubscriptionStatus();
   }, [user]);
 
-  const handleOpenUpgradeSim = (targetPlan: string) => {
-    // If upgrading to free/visitor, do it immediately without card simulation
-    if (targetPlan === 'free' || targetPlan === 'visitor') {
-      handleUpgradePlan(targetPlan);
+  const handleUpgradeClick = async (targetPlan: string) => {
+    if (!user) {
+      alert('يرجى تسجيل الدخول أولاً للاشتراك وتفعيل الخطط المتقدمة.');
       return;
     }
+
+    if (targetPlan === 'free' || targetPlan === 'visitor') {
+      await handleUpgradePlan(targetPlan);
+      return;
+    }
+
+    // Inform the user that payment via Paymob is coming soon
+    alert('بوابة الدفع الإلكتروني عبر Paymob قيد الربط والتفعيل النهائي حالياً وسوف تتاح قريباً جداً! يمكنك استخدام الدفع التجريبي الآن لتجربة كافة مميزات الباقة مجاناً.');
+
+    // Fallback to local simulation sandbox to keep app fully testable
     setUpgradingTo(targetPlan);
     setCardName(user?.displayName || 'الشاعر العربي');
     setShowSimModal(true);
@@ -146,6 +158,41 @@ export default function SubscriptionPlans({
     }, 1500);
   };
 
+  if (!user) {
+    return (
+      <div className="space-y-6 animate-fade-in" dir="rtl">
+        <div className="border-b border-gray-100 dark:border-white/5 pb-4">
+          <span className={`text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full ${
+            isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-950/10 text-[#1a472a]'
+          }`}>
+            نظام العضويات والاشتراكات الفاخرة
+          </span>
+          <h2 className={`text-2xl font-serif font-black mt-1.5 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
+            الاشتراكات
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">تطوير وتوسيع حدود الاستخدام اليومي لدعم إبداعك وصياغتك الشعرية</p>
+        </div>
+
+        <div className={`border rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 shadow-sm min-h-[300px] ${
+          isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/20 text-gray-800'
+        }`}>
+          <Crown className="w-12 h-12 text-amber-500 animate-pulse mb-2" />
+          <h3 className="font-serif font-black text-xl">سجل الدخول بواسطة Google لإظهار خطة الاشتراك الخاصة بك.</h3>
+          <p className="text-xs text-gray-400 max-w-md leading-relaxed">
+            برجاء تسجيل الدخول لعرض باقة اشتراكك الحالية وإدارتها أو ترقيتها للحصول على خيارات النظم والبحور اللانهائية ومزايا حصرية.
+          </p>
+          <button
+            onClick={onSignIn}
+            className="px-6 py-3 bg-[#1a472a] hover:bg-[#153a22] text-white font-serif font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 mt-4"
+          >
+            <Crown className="w-4 h-4 text-[#dfba6b]" />
+            سجل الدخول بواسطة Google لإظهار خطة الاشتراك الخاصة بك.
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading && Object.keys(allPlans).length === 0) {
     return (
       <div className={`border rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 shadow-sm min-h-[300px] ${
@@ -202,7 +249,7 @@ export default function SubscriptionPlans({
           نظام العضويات والاشتراكات الفاخرة
         </span>
         <h2 className={`text-2xl font-serif font-black mt-1.5 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
-          اختر باقتك الأدبية المفضلة
+          الاشتراكات
         </h2>
         <p className="text-xs text-gray-500 mt-0.5">تطوير وتوسيع حدود الاستخدام اليومي لدعم إبداعك وصياغتك الشعرية</p>
       </div>
@@ -256,8 +303,10 @@ export default function SubscriptionPlans({
       </div>
 
       {/* Grid of Plans */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Object.entries(allPlans).map(([id, planData]) => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {Object.entries(allPlans)
+          .filter(([id]) => id !== 'visitor')
+          .map(([id, planData]) => {
           const plan = planData as PlanDetail;
           const isCurrent = planId === id;
           const design = planDesign[id as keyof typeof planDesign] || planDesign.free;
@@ -280,15 +329,22 @@ export default function SubscriptionPlans({
 
               <div className="space-y-4">
                 <div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${design.badge}`}>
-                    الباقة {plan.name}
-                  </span>
+                  <div className="flex justify-between items-center">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${design.badge}`}>
+                      {plan.name}
+                    </span>
+                    {plan.price && (
+                      <span className="text-xs font-serif font-black text-[#8b1d2e] dark:text-[#dfba6b] bg-amber-500/5 dark:bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/10">
+                        {plan.price}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-baseline gap-1 mt-2">
                     <span className="text-3xl font-serif font-black">{plan.limit}</span>
                     <span className="text-xs text-gray-400">استخدام / يومياً</span>
                   </div>
                   <span className="text-[10px] text-gray-400 mt-1 block">
-                    {id === 'visitor' ? 'مجاناً للجميع بدون تسجيل' : id === 'free' ? 'مجاناً للأعضاء المسجلين' : id === 'silver' ? 'ترقية سريعة وبأسعار رمزية' : 'باقة النخبة والشعراء الكبار'}
+                    {id === 'free' ? 'مجاناً للأعضاء المسجلين' : id === 'silver' ? 'ترقية سريعة وبأسعار رمزية' : 'باقة النخبة والشعراء الكبار'}
                   </span>
                 </div>
 
@@ -310,11 +366,11 @@ export default function SubscriptionPlans({
                     disabled 
                     className="w-full py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-xl border border-emerald-500/20 cursor-default"
                   >
-                    مفعلة حالياً
+                    الخطة مفعلة حالياً
                   </button>
                 ) : (
                   <button 
-                    onClick={() => handleOpenUpgradeSim(id)}
+                    onClick={() => handleUpgradeClick(id)}
                     className={`w-full py-2.5 text-xs font-serif font-bold rounded-xl transition-all cursor-pointer ${
                       id === 'gold' 
                         ? 'bg-gradient-to-r from-[#b58d3d] to-[#dfba6b] hover:from-[#9c7830] hover:to-[#cfa85a] text-white shadow-md' 
@@ -323,7 +379,7 @@ export default function SubscriptionPlans({
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-200'
                     }`}
                   >
-                    {id === 'free' || id === 'visitor' ? 'التحويل للخطة' : 'ترقية فورية'}
+                    {id === 'free' ? 'تفعيل الخطة المجانية' : 'اشترك الآن'}
                   </button>
                 )}
               </div>

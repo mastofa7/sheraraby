@@ -17,7 +17,12 @@ import {
   ChevronLeft,
   Server,
   Globe,
-  Info
+  Info,
+  CreditCard,
+  DollarSign,
+  Search,
+  Filter,
+  Calendar
 } from 'lucide-react';
 import { apiFetch } from '../firebase';
 
@@ -52,9 +57,68 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
     }
   };
 
+  const [activeTab, setActiveTab] = useState<'server' | 'subscriptions' | 'diwans'>('server');
+  const [subStats, setSubStats] = useState<any>(null);
+  const [loadingSub, setLoadingSub] = useState<boolean>(false);
+  const [errorSub, setErrorSub] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [planFilter, setPlanFilter] = useState<string>('all');
+
+  const [allDiwans, setAllDiwans] = useState<any[]>([]);
+  const [loadingDiwans, setLoadingDiwans] = useState<boolean>(false);
+  const [errorDiwans, setErrorDiwans] = useState<string | null>(null);
+  const [diwanSearch, setDiwanSearch] = useState<string>('');
+  const [selectedAdminPoem, setSelectedAdminPoem] = useState<any | null>(null);
+
+  const fetchAllDiwans = async () => {
+    setLoadingDiwans(true);
+    setErrorDiwans(null);
+    try {
+      const res = await apiFetch('/api/admin/all-diwans');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'فشل تحميل الدواوين من الخادم.');
+      }
+      const data = await res.json();
+      setAllDiwans(data);
+    } catch (err: any) {
+      console.error(err);
+      setErrorDiwans(err.message || 'حدث خطأ فني أثناء تحميل الدواوين.');
+    } finally {
+      setLoadingDiwans(false);
+    }
+  };
+
+  const fetchSubStats = async () => {
+    setLoadingSub(true);
+    setErrorSub(null);
+    try {
+      const res = await apiFetch('/api/admin/subscription-stats');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'فشل تحميل بيانات الاشتراكات من الخادم.');
+      }
+      const data = await res.json();
+      setSubStats(data);
+    } catch (err: any) {
+      console.error(err);
+      setErrorSub(err.message || 'حدث خطأ فني أثناء تحميل بيانات الاشتراكات.');
+    } finally {
+      setLoadingSub(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'subscriptions') {
+      fetchSubStats();
+    } else if (activeTab === 'diwans') {
+      fetchAllDiwans();
+    }
+  }, [activeTab]);
 
   if (loading) {
     return (
@@ -171,8 +235,44 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
       </div>
 
-      {/* Grid 1: Basic Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Tab Switcher */}
+      <div className="flex border-b border-gray-100 dark:border-white/5 gap-2 pb-px mb-6 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('server')}
+          className={`px-5 py-3 text-sm font-serif font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+            activeTab === 'server'
+              ? (isDarkMode ? 'border-[#dfba6b] text-[#dfba6b]' : 'border-[#1a472a] text-[#1a472a]')
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          ⚙️ إحصائيات النظام والاستخدام
+        </button>
+        <button
+          onClick={() => setActiveTab('subscriptions')}
+          className={`px-5 py-3 text-sm font-serif font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'subscriptions'
+              ? (isDarkMode ? 'border-[#dfba6b] text-[#dfba6b]' : 'border-[#1a472a] text-[#1a472a]')
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          💳 لوحة إدارة الاشتراكات والمدفوعات
+        </button>
+        <button
+          onClick={() => setActiveTab('diwans')}
+          className={`px-5 py-3 text-sm font-serif font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'diwans'
+              ? (isDarkMode ? 'border-[#dfba6b] text-[#dfba6b]' : 'border-[#1a472a] text-[#1a472a]')
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          📜 دواوين المستخدمين المحفوظة
+        </button>
+      </div>
+
+      {activeTab === 'server' && (
+        <>
+          {/* Grid 1: Basic Statistics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Users Today */}
         <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
           isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
@@ -188,7 +288,7 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
             {stats?.usersToday} <span className="text-xs font-sans text-gray-400 font-normal">مستخدم</span>
           </div>
           <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-emerald-500" /> +١٥٪ نسبة زيادة النشاط
+            <TrendingUp className="w-3 h-3 text-emerald-500" /> نشاط مستمر ومسجل للزوار اليوم
           </p>
         </div>
 
@@ -226,7 +326,7 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
             {stats?.totalRequests} <span className="text-xs font-sans text-gray-400 font-normal">طلب</span>
           </div>
           <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-emerald-500" /> معدل الاستجابة ممتاز
+            <TrendingUp className="w-3 h-3 text-emerald-500" /> تم تسجيلها في السجل السحابي
           </p>
         </div>
 
@@ -708,6 +808,439 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
           </div>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'subscriptions' && (
+        <div className="space-y-6">
+          {loadingSub ? (
+            <div className="p-12 text-center flex flex-col items-center justify-center gap-4">
+              <div className="w-8 h-8 rounded-full border-4 border-t-transparent border-[#dfba6b] animate-spin" />
+              <p className="font-serif text-sm text-gray-400 animate-pulse">جاري تحميل بيانات الاشتراكات وتحليل العمليات من Paymob و Firestore...</p>
+            </div>
+          ) : errorSub ? (
+            <div className={`p-6 rounded-xl border text-center ${isDarkMode ? 'bg-[#1a0f10] border-red-900/30 text-red-300' : 'bg-red-50 border-red-200 text-red-900'}`}>
+              <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2 animate-bounce" />
+              <h4 className="font-serif font-black text-base">عثرة أثناء جلب الإحصائيات</h4>
+              <p className="text-xs mt-1">{errorSub}</p>
+              <button onClick={fetchSubStats} className="mt-3 px-4 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">إعادة المحاولة</button>
+            </div>
+          ) : !subStats ? (
+            <p className="text-center text-sm text-gray-500">لا تتوفر بيانات حالياً.</p>
+          ) : (
+            <>
+              {/* Bento Grid containing aggregated metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Metric 1: Total Subscribers */}
+                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+                }`}>
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl" />
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-xs font-serif font-bold text-gray-400">إجمالي المشتركين النشطين</span>
+                    <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-600">
+                      <Users className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-serif font-black text-emerald-600 dark:text-emerald-400">
+                    {subStats.totalSubscribers} <span className="text-xs font-sans text-gray-400 font-normal">مشترك</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" /> نشطون عبر بوابة Paymob
+                  </p>
+                </div>
+
+                {/* Metric 2: Pro/Silver Subscribers */}
+                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+                }`}>
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl" />
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-xs font-serif font-bold text-gray-400">الخطة الاحترافية (Pro)</span>
+                    <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-serif font-black text-blue-500 dark:text-blue-400">
+                    {subStats.proSubscribers} <span className="text-xs font-sans text-gray-400 font-normal">مشترك</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    بقيمة <span className="font-bold text-blue-500">$20</span> شهرياً للمشترك
+                  </p>
+                </div>
+
+                {/* Metric 3: Premium/Gold Subscribers */}
+                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+                }`}>
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl" />
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-xs font-serif font-bold text-gray-400">الخطة المميزة (Premium)</span>
+                    <div className="p-2 bg-amber-500/10 rounded-xl text-[#dfba6b]">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-serif font-black text-amber-500 dark:text-[#dfba6b]">
+                    {subStats.premiumSubscribers} <span className="text-xs font-sans text-gray-400 font-normal">مشترك</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    بقيمة <span className="font-bold text-amber-500">$80</span> شهرياً للمشترك
+                  </p>
+                </div>
+
+                {/* Metric 4: Expected Monthly Revenue */}
+                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+                }`}>
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/5 rounded-full blur-xl" />
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-xs font-serif font-bold text-gray-400">الإيراد الشهري المتوقع (MRR)</span>
+                    <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-serif font-black text-purple-600 dark:text-purple-400">
+                    ${subStats.monthlyRevenue} <span className="text-xs font-sans text-gray-400 font-normal">دولار</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3 text-emerald-500" /> معدل الدخل السنوي المتوقع: ${(subStats.monthlyRevenue * 12)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status boxes for canceled and expired */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                  isDarkMode ? 'bg-[#15120c] border-[#dfba6b]/10' : 'bg-amber-50/50 border-amber-200/50'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-[#dfba6b]/10 flex items-center justify-center text-[#dfba6b]">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400 block font-serif">الاشتراكات المنتهية</span>
+                      <span className="text-lg font-serif font-black text-[#dfba6b]">{subStats.expiredSubscriptions}</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-serif">عادت تلقائياً للخطة المجانية</span>
+                </div>
+
+                <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                  isDarkMode ? 'bg-[#1a0f10] border-red-950/40' : 'bg-red-50/50 border-red-200/50'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
+                      <XCircle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400 block font-serif">الاشتراكات الملغاة</span>
+                      <span className="text-lg font-serif font-black text-red-600 dark:text-red-400">{subStats.canceledSubscriptions}</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-serif">أوقف المستخدم التجديد التلقائي</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Side: Last Payments List */}
+                <div className={`lg:col-span-1 border rounded-2xl p-5 shadow-xs ${
+                  isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+                }`}>
+                  <h3 className="font-serif font-black text-base flex items-center gap-1.5 mb-4">
+                    <DollarSign className="w-4 h-4 text-emerald-500" /> آخر عمليات الدفع الناجحة
+                  </h3>
+                  <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    {subStats.latestPayments && subStats.latestPayments.length > 0 ? (
+                      subStats.latestPayments.map((pay: any) => (
+                        <div key={pay.id} className="p-3 rounded-xl bg-gray-50 dark:bg-emerald-950/15 border border-gray-100 dark:border-white/5 flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-gray-400 truncate max-w-[130px] font-sans" title={pay.email}>
+                              {pay.email}
+                            </span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-serif text-sm">
+                              +${pay.amount}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] text-gray-500">
+                            <span>خطة: {pay.planId === 'gold' ? 'الذهبية' : 'الفضية'}</span>
+                            <span className="font-sans">{new Date(pay.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-xs text-gray-500 py-6">لا توجد دفعات مسجلة بعد.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Side: Subscribers List with Search & Filtering */}
+                <div className={`lg:col-span-2 border rounded-2xl p-5 shadow-xs flex flex-col justify-between ${
+                  isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+                }`}>
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <h3 className="font-serif font-black text-base flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-[#b58d3d]" /> قائمة الحسابات والاشتراكات
+                      </h3>
+                      {/* Search & Filters */}
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:w-48">
+                          <input
+                            type="text"
+                            placeholder="ابحث بالبريد الإلكتروني..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full text-xs p-2 pr-7 rounded-lg bg-gray-50 dark:bg-[#0a120d] border border-gray-200 dark:border-white/10 outline-none focus:ring-1 focus:ring-emerald-500 text-right"
+                          />
+                          <Search className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-2.5" />
+                        </div>
+                        <select
+                          value={planFilter}
+                          onChange={(e) => setPlanFilter(e.target.value)}
+                          className="text-xs p-2 rounded-lg bg-gray-50 dark:bg-[#0a120d] border border-gray-200 dark:border-white/10 outline-none cursor-pointer"
+                        >
+                          <option value="all">كل الخطط</option>
+                          <option value="silver">الفضية (Pro)</option>
+                          <option value="gold">الذهبية (Premium)</option>
+                          <option value="free">المجانية</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-right text-xs">
+                        <thead>
+                          <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400">
+                            <th className="pb-2 font-semibold">البريد الإلكتروني</th>
+                            <th className="pb-2 font-semibold">الخطة</th>
+                            <th className="pb-2 font-semibold">حالة الاشتراك</th>
+                            <th className="pb-2 font-semibold">معرف المعاملة (Paymob)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                          {subStats.allUsers && subStats.allUsers.length > 0 ? (
+                            subStats.allUsers
+                              .filter((u: any) => {
+                                const matchesSearch = u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+                                const matchesFilter = planFilter === 'all' || u.planId === planFilter;
+                                return matchesSearch && matchesFilter;
+                              })
+                              .map((userRow: any) => {
+                                const isSilver = userRow.planId === 'silver';
+                                const isGold = userRow.planId === 'gold';
+                                const isActive = userRow.subscriptionStatus === 'active' || userRow.subscriptionStatus === 'trialing';
+
+                                return (
+                                  <tr key={userRow.id} className="hover:bg-gray-50 dark:hover:bg-emerald-950/5">
+                                    <td className="py-3 font-semibold font-sans truncate max-w-[140px]" title={userRow.email}>
+                                      {userRow.email}
+                                    </td>
+                                    <td className="py-3">
+                                      {isGold ? (
+                                        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-[#dfba6b] font-bold">ذهبية</span>
+                                      ) : isSilver ? (
+                                        <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 font-bold">فضية</span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded bg-gray-500/10 text-gray-400">مجانية</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3">
+                                      {isActive ? (
+                                        <span className="text-emerald-500 font-bold">● نشط</span>
+                                      ) : userRow.subscriptionStatus === 'canceled' ? (
+                                        <span className="text-red-500 font-semibold">● ملغى</span>
+                                      ) : userRow.subscriptionStatus === 'expired' ? (
+                                        <span className="text-[#dfba6b] font-semibold">● منتهٍ</span>
+                                      ) : (
+                                        <span className="text-gray-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 font-mono text-[10px] text-gray-400">
+                                      {userRow.paymentTransactionId || 'لا يوجد'}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                          ) : (
+                            <tr>
+                              <td colSpan={4} className="py-6 text-center text-gray-500">لا يوجد حسابات مسجلة مطابقة للبحث.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'diwans' && (
+        <div className="space-y-6">
+          <div className={`border rounded-2xl p-6 shadow-xs ${
+            isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15' : 'bg-white border-manuscript-border'
+          }`}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
+              <div>
+                <h3 className={`text-base font-serif font-black ${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+                  📜 دواوين المستخدمين المحفوظة سحابياً
+                </h3>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  استعراض عام وقراءة للقصائد والمقاطع التي قام الشعراء المسجلون بحفظها في ديوانهم الشخصي.
+                </p>
+              </div>
+
+              {/* Refresh & Search */}
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="relative w-full md:w-60">
+                  <input
+                    type="text"
+                    placeholder="ابحث بالبريد، اسم القصيدة، أو البحر..."
+                    value={diwanSearch}
+                    onChange={(e) => setDiwanSearch(e.target.value)}
+                    className="w-full text-xs p-2 pr-7 rounded-lg bg-gray-50 dark:bg-[#0a120d] border border-gray-200 dark:border-white/10 outline-none focus:ring-1 focus:ring-[#1a472a] text-right"
+                  />
+                  <Search className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-2.5" />
+                </div>
+                <button
+                  onClick={fetchAllDiwans}
+                  className="px-3 py-2 text-xs bg-[#1a472a] hover:bg-[#153a22] text-white font-serif font-bold rounded-lg transition-all cursor-pointer shrink-0"
+                >
+                  تحديث القائمة
+                </button>
+              </div>
+            </div>
+
+            {loadingDiwans ? (
+              <div className="p-12 text-center flex flex-col items-center justify-center gap-4">
+                <div className="w-8 h-8 rounded-full border-4 border-t-transparent border-[#dfba6b] animate-spin" />
+                <p className="font-serif text-sm text-gray-400 animate-pulse">جاري تحميل دواوين المستخدمين من قاعدة البيانات السحابية...</p>
+              </div>
+            ) : errorDiwans ? (
+              <div className="p-6 text-center text-red-500 text-xs">
+                {errorDiwans}
+              </div>
+            ) : allDiwans.length === 0 ? (
+              <div className="p-12 text-center text-gray-500 text-xs">
+                لا توجد أي قصائد محفوظة في الدواوين حالياً.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400">
+                      <th className="pb-2 font-semibold">المستخدم والبريد</th>
+                      <th className="pb-2 font-semibold">عنوان القصيدة</th>
+                      <th className="pb-2 font-semibold">البحر</th>
+                      <th className="pb-2 font-semibold">الروي</th>
+                      <th className="pb-2 font-semibold">تاريخ الحفظ</th>
+                      <th className="pb-2 font-semibold text-left">التحكم</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                    {allDiwans
+                      .filter((p: any) => {
+                        const s = diwanSearch.toLowerCase();
+                        return (
+                          !s ||
+                          p.userEmail?.toLowerCase().includes(s) ||
+                          p.title?.toLowerCase().includes(s) ||
+                          p.meterName?.toLowerCase().includes(s)
+                        );
+                      })
+                      .map((poem: any) => {
+                        return (
+                          <tr key={poem.id} className="hover:bg-gray-50 dark:hover:bg-emerald-950/5">
+                            <td className="py-3 font-semibold font-sans truncate max-w-[140px]" title={poem.userEmail}>
+                              {poem.userEmail || 'مجهول'}
+                            </td>
+                            <td className="py-3 font-serif font-black text-gray-800 dark:text-gray-100">
+                              {poem.title || 'قصيدة بلا عنوان'}
+                            </td>
+                            <td className="py-3">
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold">
+                                {poem.meterName}
+                              </span>
+                            </td>
+                            <td className="py-3 font-serif font-semibold">
+                              {poem.rhymeLetter || poem.verses?.[0]?.rhyme || '—'}
+                            </td>
+                            <td className="py-3 text-gray-400 font-sans text-[11px]">
+                              {poem.createdAt ? new Date(poem.createdAt).toLocaleDateString('ar-EG') : '—'}
+                            </td>
+                            <td className="py-3 text-left">
+                              <button
+                                onClick={() => setSelectedAdminPoem(poem)}
+                                className="px-2.5 py-1 text-[11px] bg-amber-500/10 hover:bg-amber-500/20 text-[#dfba6b] rounded-md font-serif font-bold transition-all cursor-pointer"
+                              >
+                                👁️ استعراض المخطوطة
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Modal for viewing the selected poem */}
+          {selectedAdminPoem && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" dir="rtl">
+              <div className={`w-full max-w-2xl rounded-2xl p-6 text-right max-h-[85vh] overflow-y-auto relative ${
+                isDarkMode ? 'bg-[#0f1d14] text-white border-2 border-[#dfba6b]/30' : 'bg-manuscript-paper text-gray-900 border-2 border-[#b58d3d]'
+              }`}>
+                <div className="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-white/5 mb-4">
+                  <div>
+                    <h3 className="font-serif font-black text-lg text-emerald-600 dark:text-[#dfba6b]">
+                      {selectedAdminPoem.title || 'قصيدة بلا عنوان'}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      صاحب المخطوطة: <span className="font-sans font-bold">{selectedAdminPoem.userEmail}</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAdminPoem(null)}
+                    className="p-1 text-gray-400 hover:text-white text-xs font-bold"
+                  >
+                    إغلاق [X]
+                  </button>
+                </div>
+
+                {/* Poem verses display */}
+                <div className="space-y-3 py-6 px-4 bg-emerald-950/10 dark:bg-black/20 rounded-xl mb-4 border border-[#b58d3d]/10">
+                  {selectedAdminPoem.verses && selectedAdminPoem.verses.map((verse: any, i: number) => (
+                    <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center text-sm font-serif leading-loose">
+                      <div className="font-bold border-l border-emerald-900/10 dark:border-white/5 px-2">
+                        {verse.firstHemistich || verse.first || verse.first_hemistich}
+                      </div>
+                      <div className="font-bold px-2">
+                        {verse.secondHemistich || verse.second || verse.second_hemistich}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-serif font-bold mb-4">
+                  <div className="p-2 rounded bg-gray-500/5">البحر: {selectedAdminPoem.meterName}</div>
+                  <div className="p-2 rounded bg-gray-500/5">القافية/الروي: {selectedAdminPoem.rhymeLetter || '—'}</div>
+                  <div className="p-2 rounded bg-gray-500/5">الغرض: {selectedAdminPoem.purpose || '—'}</div>
+                </div>
+
+                {selectedAdminPoem.explanation && (
+                  <div className="mt-4 p-3 bg-amber-500/5 rounded-lg text-xs leading-relaxed border border-amber-500/10">
+                    <h4 className="font-serif font-bold text-emerald-600 dark:text-[#dfba6b] mb-1">الشرح اللغوي والتفسير:</h4>
+                    <p className="text-gray-400">{selectedAdminPoem.explanation}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

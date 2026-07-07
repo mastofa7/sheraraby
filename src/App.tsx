@@ -45,7 +45,7 @@ import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 import TurnstileWidget from './components/TurnstileWidget';
 
 import { auth, googleProvider, apiFetch } from './firebase';
-import { signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { signInWithPopup, signInAnonymously, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
 // Sliding educational/literary quotes to entertain the user while generating (which can take 10-15s due to long verses)
 const LOADING_QUOTES = [
@@ -119,6 +119,11 @@ export default function App() {
   const [userPlanId, setUserPlanId] = useState<string>('visitor');
   const [userPlanLimit, setUserPlanLimit] = useState<number>(10);
   const [userRole, setUserRole] = useState<'admin' | 'user'>('user');
+  const isUserAdmin = !!(user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin'));
+  const [unauthorizedDomainError, setUnauthorizedDomainError] = useState<string | null>(null);
+  const [popupClosedError, setPopupClosedError] = useState<boolean>(false);
+  const [paymentVerifying, setPaymentVerifying] = useState<boolean>(false);
+  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
 
   // Listen to Auth State Changes
   useEffect(() => {
@@ -137,17 +142,40 @@ export default function App() {
   const handleSignInWithGoogle = async () => {
     try {
       setError(null);
+      setUnauthorizedDomainError(null);
+      setPopupClosedError(false);
       const result = await signInWithPopup(auth, googleProvider);
       setUser(result.user);
     } catch (err: any) {
       console.error('Login error:', err);
-      if (err && (err.code === 'auth/popup-closed-by-user' || String(err).includes('popup-closed-by-user') || String(err.message).includes('popup-closed-by-user'))) {
+      const isUnauthorized = err && (
+        err.code === 'auth/unauthorized-domain' ||
+        String(err).includes('unauthorized-domain') ||
+        String(err.message).includes('unauthorized-domain')
+      );
+      if (isUnauthorized) {
+        setUnauthorizedDomainError(window.location.hostname);
+      } else if (err && (err.code === 'auth/popup-closed-by-user' || String(err).includes('popup-closed-by-user') || String(err.message).includes('popup-closed-by-user'))) {
+        setPopupClosedError(true);
         setError(
           'تم إغلاق نافذة تسجيل الدخول من قِبل المتصفح أو المستخدم. يرجى السماح بالنوافذ المنبثقة (Popups) وإعادة المحاولة، أو يمكنك فتح التطبيق في علامة تبويب جديدة لتسجيل الدخول بسلاسة.'
         );
       } else {
         setError(err.message || 'حدث خطأ أثناء تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.');
       }
+    }
+  };
+
+  const handleSignInAnonymously = async () => {
+    try {
+      setError(null);
+      setUnauthorizedDomainError(null);
+      setPopupClosedError(false);
+      const result = await signInAnonymously(auth);
+      setUser(result.user);
+    } catch (err: any) {
+      console.error('Anonymous login error:', err);
+      setError(err.message || 'حدث خطأ أثناء الدخول السريع كشاعر ضيف. يرجى المحاولة مرة أخرى.');
     }
   };
 
@@ -206,6 +234,66 @@ export default function App() {
     fetchConfig();
   }, [user]);
 
+  // Listen for Paymob redirect query parameters (success or cancel)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    const paymentStatus = params.get('payment');
+
+    if (sessionId && paymentStatus === 'success') {
+      const verifyPaymentSession = async () => {
+        setPaymentVerifying(true);
+        setError(null);
+        try {
+          const res = await apiFetch(`/api/payment/verify-session?session_id=${sessionId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              setPaymentSuccessMessage(data.message || 'تم تفعيل اشتراكك وتحديث خطتك بنجاح عبر Paymob!');
+              setUserPlanId(data.planId);
+              // Store backup in localStorage
+              localStorage.setItem('user_subscription_plan_backup', data.planId);
+              
+              // Clear URL query parameters so refresh is clean
+              const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+              window.history.replaceState({ path: newUrl }, '', newUrl);
+              
+              // Trigger config refresh to update limit displays
+              const configRes = await apiFetch('/api/config');
+              if (configRes.ok) {
+                const configData = await configRes.json();
+                if (typeof configData.remainingDailyUses === 'number') {
+                  setRemainingDailyUses(configData.remainingDailyUses);
+                }
+                if (typeof configData.maxLimit === 'number') {
+                  setUserPlanLimit(configData.maxLimit);
+                }
+              }
+            } else {
+              setError(data.message || 'فشل التحقق من الدفع، يرجى الاتصال بالدعم.');
+            }
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            setError(errData.error || 'فشل التحقق من جلسة دفع Paymob.');
+          }
+        } catch (err: any) {
+          console.error('Error verifying Paymob session:', err);
+          setError('حدث خطأ فني أثناء التحقق من اشتراكك.');
+        } finally {
+          setPaymentVerifying(false);
+        }
+      };
+
+      if (user) {
+        verifyPaymentSession();
+      }
+    } else if (paymentStatus === 'cancel') {
+      setError('تم إلغاء عملية الدفع والاشتراك. يمكنك المحاولة مجدداً في أي وقت.');
+      const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: newUrl }, '', newUrl);
+    }
+  }, [user]);
+
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -244,7 +332,7 @@ export default function App() {
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
 
   // ميزات متقدمة
-  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'meters' | 'analytics' | 'admin'>('studio');
+  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin'>('studio');
 
   // Secure Redirection: If non-admin attempts to access admin tab, redirect silently to studio
   useEffect(() => {
@@ -307,43 +395,61 @@ export default function App() {
     }
   }, [showLogsPanel]);
 
-  // Load saved poems and dark mode from localStorage on mount
+  // Load dark mode on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('arabic_poems_history');
-      if (saved) {
-        setHistory(JSON.parse(saved));
-      }
       const savedDarkMode = localStorage.getItem('arabic_poems_dark_mode');
       if (savedDarkMode === 'true') {
         setIsDarkMode(true);
       }
     } catch (err) {
-      console.error('Failed to load history from localStorage', err);
+      console.error('Failed to load settings', err);
     }
   }, []);
 
-  // Update localStorage when history changes
-  const saveHistoryToStorage = (updatedHistory: GeneratedPoem[]) => {
+  const fetchDiwanFromBackend = async () => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
     try {
-      localStorage.setItem('arabic_poems_history', JSON.stringify(updatedHistory));
-      setHistory(updatedHistory);
+      const res = await apiFetch('/api/diwan');
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
     } catch (err) {
-      console.error('Failed to save history', err);
+      console.error('Failed to fetch user diwan:', err);
     }
   };
 
-  const handleToggleFavorite = (id: string, e: React.MouseEvent) => {
+  useEffect(() => {
+    fetchDiwanFromBackend();
+  }, [user]);
+
+  const saveHistoryToStorage = async (updatedHistory: GeneratedPoem[]) => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
+    setHistory(updatedHistory);
+  };
+
+  const handleToggleFavorite = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = history.map((poem) => {
-      if (poem.id === id) {
-        return { ...poem, isFavorite: !poem.isFavorite };
+    if (!user) return;
+    try {
+      const res = await apiFetch(`/api/diwan/${id}/favorite`, {
+        method: 'PUT'
+      });
+      if (res.ok) {
+        fetchDiwanFromBackend();
+        if (currentPoem?.id === id) {
+          setCurrentPoem({ ...currentPoem, isFavorite: !currentPoem.isFavorite });
+        }
       }
-      return poem;
-    });
-    saveHistoryToStorage(updated);
-    if (currentPoem?.id === id) {
-      setCurrentPoem({ ...currentPoem, isFavorite: !currentPoem.isFavorite });
+    } catch (err) {
+      console.error('Failed to toggle favorite on server:', err);
     }
   };
 
@@ -502,9 +608,19 @@ export default function App() {
 
       setCurrentPoem(newPoem);
       
-      // Save to history
-      const updatedHistory = [newPoem, ...history];
-      saveHistoryToStorage(updatedHistory);
+      // Save to history on secure backend
+      if (user) {
+        try {
+          await apiFetch('/api/diwan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPoem)
+          });
+          fetchDiwanFromBackend();
+        } catch (err) {
+          console.error('Failed to save generated poem to server:', err);
+        }
+      }
 
       // Scroll smoothly to results
       setTimeout(() => {
@@ -540,19 +656,38 @@ export default function App() {
     }, 100);
   };
 
-  const handleDeletePoem = (id: string, e: React.MouseEvent) => {
+  const handleDeletePoem = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = history.filter((p) => p.id !== id);
-    saveHistoryToStorage(updated);
-    if (currentPoem?.id === id) {
-      setCurrentPoem(null);
+    if (!user) return;
+    try {
+      const res = await apiFetch(`/api/diwan/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchDiwanFromBackend();
+        if (currentPoem?.id === id) {
+          setCurrentPoem(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete poem on server:', err);
     }
   };
 
-  const handleClearHistory = () => {
+  const handleClearHistory = async () => {
+    if (!user) return;
     if (window.confirm('هل أنت متأكد من رغبتك في حذف جميع القصائد المحفوظة بالديوان؟ لا يمكن استرجاعها.')) {
-      saveHistoryToStorage([]);
-      setCurrentPoem(null);
+      try {
+        const res = await apiFetch('/api/diwan/clear', {
+          method: 'POST'
+        });
+        if (res.ok) {
+          fetchDiwanFromBackend();
+          setCurrentPoem(null);
+        }
+      } catch (err) {
+        console.error('Failed to clear diwan:', err);
+      }
     }
   };
 
@@ -646,26 +781,28 @@ export default function App() {
             </button>
 
             {/* Subscription status display in header */}
-            <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 select-none ${
-              userPlanId === 'gold'
-                ? 'border-amber-400 bg-amber-500/15 text-amber-300 shadow-xs'
-                : userPlanId === 'silver'
-                ? 'border-slate-300 bg-slate-400/15 text-slate-100'
-                : isDarkMode
-                ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]'
-                : 'border-[#b58d3d]/30 bg-[#1a472a]/50 text-white'
-            }`}
-            onClick={() => setActiveMainTab('subscriptions')}
-            title="إدارة الباقة والعدادات الأدبية"
-            >
-              <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-              <span>الباقة: {userRole === 'admin' ? 'المالك / بلا حدود' : (userPlanId === 'gold' ? 'الذهبية' : userPlanId === 'silver' ? 'الفضية' : userPlanId === 'free' ? 'المجانية' : 'الزائر')}</span>
-              {remainingDailyUses !== null && (
-                <span className="text-[10px] opacity-85 border-r border-white/20 pr-1.5 font-sans mr-0.5">
-                  {userRole === 'admin' ? '∞' : remainingDailyUses} متبقي
-                </span>
-              )}
-            </div>
+            {user && (
+              <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 select-none ${
+                userPlanId === 'gold'
+                  ? 'border-amber-400 bg-amber-500/15 text-amber-300 shadow-xs'
+                  : userPlanId === 'silver'
+                  ? 'border-slate-300 bg-slate-400/15 text-slate-100'
+                  : isDarkMode
+                  ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]'
+                  : 'border-[#b58d3d]/30 bg-[#1a472a]/50 text-white'
+              }`}
+              onClick={() => setActiveMainTab('subscriptions')}
+              title="إدارة الباقة والعدادات الأدبية"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                <span>الباقة: {isUserAdmin ? 'المالك / بلا حدود' : (userPlanId === 'gold' ? 'المميزة' : userPlanId === 'silver' ? 'الاحترافية' : userPlanId === 'free' ? 'المجانية' : 'الزائر')}</span>
+                {remainingDailyUses !== null && (
+                  <span className="text-[10px] opacity-85 border-r border-white/20 pr-1.5 font-sans mr-0.5">
+                    {isUserAdmin ? '∞' : remainingDailyUses} متبقي
+                  </span>
+                )}
+              </div>
+            )}
 
             <span className="text-[10px] uppercase font-mono tracking-widest text-white/50 hidden xl:inline-block">
               v2.6.0 • نشط
@@ -732,19 +869,7 @@ export default function App() {
             }`}
           >
             <Award className="w-3.5 h-3.5" />
-            ديوانك المحفوظ ({history.length})
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('meters')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'meters'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            موسوعة البحور العربية
+            ديوانك المحفوظ {user ? `(${history.length})` : ''}
           </button>
 
           <button
@@ -768,7 +893,7 @@ export default function App() {
             }`}
           >
             <Crown className="w-3.5 h-3.5" />
-            الاشتراكات وباقات الترقية
+            الاشتراكات
           </button>
 
           {user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
@@ -792,7 +917,7 @@ export default function App() {
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 flex flex-col gap-6 relative">
         
-        {error && (
+        {error && !popupClosedError && (
           <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl text-red-900 dark:text-red-200 text-xs md:text-sm flex items-center justify-between gap-4 shadow-sm animate-fade-in relative z-30">
             <div className="flex items-center gap-3">
               <span className="text-xl shrink-0">⚠️</span>
@@ -801,6 +926,166 @@ export default function App() {
             <button 
               onClick={() => setError(null)}
               className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer shrink-0"
+            >
+              إغلاق
+            </button>
+          </div>
+        )}
+
+        {popupClosedError && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-400 dark:border-amber-500/30 p-6 rounded-2xl text-amber-900 dark:text-amber-200 text-sm flex flex-col gap-4 shadow-md animate-fade-in relative z-30 text-right" dir="rtl">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0 mt-0.5">💡</span>
+              <div className="flex-1 space-y-2">
+                <h3 className="font-serif font-black text-base md:text-lg text-amber-950 dark:text-amber-300">
+                  حل مشكلة تسجيل الدخول (إغلاق أو حظر النافذة المنبثقة)
+                </h3>
+                <p className="text-xs md:text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  يبدو أن متصفحك أو إطار العمل الحالي (IFrame) يمنع ظهور النوافذ المنبثقة لـ Google Sign-In لتسجيل الدخول.
+                </p>
+                <p className="text-xs md:text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  لا تقلق! لقد قمنا بتوفير <strong>حلين فوريين</strong> لمتابعة إبداعك الأدبي دون قيود:
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={handleSignInAnonymously}
+                    className="px-5 py-2.5 bg-[#1a472a] hover:bg-[#1f5633] text-[#dfba6b] font-serif font-black text-xs rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#dfba6b]/30"
+                  >
+                    <Crown className="w-4 h-4 text-[#dfba6b] shrink-0" />
+                    الحل 1: دخول سريع وفوري كشاعر ضيف (تخطي المشكلة)
+                  </button>
+
+                  <a
+                    href={window.location.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-800 font-serif font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all text-center flex items-center justify-center gap-2 border border-gray-200"
+                  >
+                    <Globe className="w-4 h-4 text-[#1a472a] shrink-0" />
+                    الحل 2: فتح التطبيق في علامة تبويب مستقلة
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-amber-500/10 pt-3 mt-1">
+              <button 
+                type="button"
+                onClick={() => {
+                  setPopupClosedError(false);
+                  setError(null);
+                }}
+                className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                تجاهل التنبيه مؤقتاً
+              </button>
+            </div>
+          </div>
+        )}
+
+        {unauthorizedDomainError && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-400 dark:border-amber-500/30 p-6 rounded-2xl text-amber-900 dark:text-amber-200 text-sm flex flex-col gap-4 shadow-md animate-fade-in relative z-30 text-right" dir="rtl">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0 mt-0.5">⚠️</span>
+              <div className="flex-1 space-y-2">
+                <h3 className="font-serif font-black text-base md:text-lg text-amber-950 dark:text-amber-300">
+                  تنبيه هام: يجب تصريح هذا النطاق (Domain) في مشروع Firebase الخاص بك
+                </h3>
+                <p className="text-xs md:text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  يرجع هذا الخطأ <code className="font-mono bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded text-red-600 dark:text-red-300">auth/unauthorized-domain</code> إلى عدم إدراج النطاق الحالي الذي يتصفحه المستخدمون أو المطورون ضمن النطاقات المصرح بها لتسجيل الدخول في وحدة تحكم Firebase الخاصة بك.
+                </p>
+                
+                <div className="bg-white/60 dark:bg-black/40 p-4 rounded-xl border border-amber-500/10 space-y-3 mt-4">
+                  <p className="font-bold text-xs text-amber-950 dark:text-amber-300">خطوات الحل في دقيقة واحدة:</p>
+                  <ol className="list-decimal list-inside text-xs space-y-2 leading-relaxed">
+                    <li>
+                      اذهب إلى <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline font-bold text-royal-700 hover:text-royal-900 dark:text-amber-400 dark:hover:text-amber-300">وحدة تحكم Firebase (Firebase Console)</a>.
+                    </li>
+                    <li>
+                      اختر مشروعك الحالي (مثال: <span className="font-mono bg-amber-500/10 px-1 py-0.5 rounded font-bold">sheraraby-d3aa5</span>).
+                    </li>
+                    <li>
+                      من القائمة الجانبية، افتح قسم <strong>Authentication</strong> (المصادقة)، ثم اذهب إلى علامة تبويب <strong>Settings</strong> (الإعدادات).
+                    </li>
+                    <li>
+                      من القائمة الفرعية، اضغط على <strong>Authorized domains</strong> (المجالات المعتمدة) ثم اضغط على زر <strong>إضافة مجال (Add domain)</strong>.
+                    </li>
+                    <li>
+                      أضف النطاقات التالية (اضغط على الزر بجانب كل نطاق لنسخه مباشرة):
+                    </li>
+                  </ol>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                    <div className="flex items-center justify-between bg-amber-500/5 p-2 rounded-lg border border-amber-500/20">
+                      <span className="font-mono text-[11px] font-bold select-all overflow-hidden text-ellipsis whitespace-nowrap" id="domain-dev">
+                        {unauthorizedDomainError}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(unauthorizedDomainError);
+                          alert('تم نسخ النطاق بنجاح!');
+                        }}
+                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] rounded-md transition-all font-bold cursor-pointer shrink-0"
+                      >
+                        نسخ النطاق الحالي
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-amber-500/5 p-2 rounded-lg border border-amber-500/20">
+                      <span className="font-mono text-[11px] font-bold select-all overflow-hidden text-ellipsis whitespace-nowrap">
+                        ais-pre-2jvfanqtgn76soriirv4wh-212306733163.europe-west3.run.app
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('ais-pre-2jvfanqtgn76soriirv4wh-212306733163.europe-west3.run.app');
+                          alert('تم نسخ نطاق المعاينة بنجاح!');
+                        }}
+                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] rounded-md transition-all font-bold cursor-pointer shrink-0"
+                      >
+                        نسخ نطاق المعاينة
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 pt-1">
+                    ✓ بمجرد إضافة النطاقات، قم بتحديث الصفحة وسيعمل تسجيل الدخول بـ Google على الفور وبسلاسة تامة!
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-amber-500/10 pt-3 mt-1">
+              <button 
+                type="button"
+                onClick={() => setUnauthorizedDomainError(null)}
+                className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                تجاهل التنبيه مؤقتاً
+              </button>
+            </div>
+          </div>
+        )}
+
+        {paymentVerifying && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-500/30 p-5 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs md:text-sm flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-fade-in relative z-30" dir="rtl">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              <p className="font-serif font-black leading-relaxed text-right">جاري التحقق من نجاح عملية الدفع وتفعيل اشتراكك لدى Paymob... يرجى الانتظار ثوانٍ معدودة.</p>
+            </div>
+          </div>
+        )}
+
+        {paymentSuccessMessage && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-500/30 p-5 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs md:text-sm flex items-center justify-between gap-4 shadow-md animate-fade-in relative z-30" dir="rtl">
+            <div className="flex items-center gap-3">
+              <span className="text-xl shrink-0">🎉</span>
+              <p className="font-serif font-black leading-relaxed text-right">{paymentSuccessMessage}</p>
+            </div>
+            <button 
+              onClick={() => setPaymentSuccessMessage(null)}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0"
             >
               إغلاق
             </button>
@@ -1372,7 +1657,7 @@ export default function App() {
                   )}
                 </div>
 
-                {turnstileSiteKey && remainingDailyUses !== 0 && (
+                {turnstileSiteKey && remainingDailyUses !== 0 && !isUserAdmin && (
                   <TurnstileWidget
                     key={turnstileResetKey}
                     siteKey={turnstileSiteKey}
@@ -1383,13 +1668,19 @@ export default function App() {
                 )}
 
                 {/* Remaining uses indicator */}
-                <div className="flex items-center justify-between text-xs font-serif font-bold mt-2">
-                  <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
-                    المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من ${user ? 30 : 10}` : '...'}
-                  </span>
-                </div>
+                {user && (
+                  <div className="flex items-center justify-between text-xs font-serif font-bold mt-2">
+                    <span className={`${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+                      {isUserAdmin ? (
+                        <span className="text-amber-500 font-black">حساب المدير (استخدام غير محدود)</span>
+                      ) : (
+                        `المتبقي اليوم: ${remainingDailyUses !== null ? `${remainingDailyUses} من ${userPlanLimit}` : '...'}`
+                      )}
+                    </span>
+                  </div>
+                )}
 
-                {remainingDailyUses === 0 && (
+                {remainingDailyUses === 0 && !isUserAdmin && (
                   <div className={`p-4 rounded-xl border text-sm leading-relaxed ${
                     isDarkMode ? 'bg-[#3b1216]/40 border-red-900/40 text-red-300' : 'bg-red-50 border-red-200 text-red-900'
                   }`}>
@@ -1405,9 +1696,9 @@ export default function App() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0}
+                  disabled={loading || (!!turnstileSiteKey && !turnstileToken && !isUserAdmin) || (remainingDailyUses === 0 && !isUserAdmin)}
                   className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg active:translate-y-0.5 transition-all flex items-center justify-center gap-2 border-b-4 ${
-                    (loading || (!!turnstileSiteKey && !turnstileToken) || remainingDailyUses === 0) 
+                    (loading || (!!turnstileSiteKey && !turnstileToken && !isUserAdmin) || (remainingDailyUses === 0 && !isUserAdmin)) 
                       ? 'bg-gray-400 text-gray-200 border-gray-600 cursor-not-allowed opacity-75' 
                       : 'bg-[#1a472a] text-white hover:bg-[#153a22] cursor-pointer border-[#0d2a18]'
                   }`}
@@ -1433,22 +1724,41 @@ export default function App() {
                 }`}>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[radial-gradient(ellipse_at_top_right,rgba(181,141,61,0.25),transparent)] pointer-events-none" />
                   <div>
-                    <span className="text-xs text-[#b58d3d] font-bold tracking-widest uppercase">موسوعة العروض الرقمية</span>
+                    <span className="text-xs text-[#b58d3d] font-bold tracking-widest uppercase">قوالب النظم الرقمية</span>
                     <h3 className="font-serif font-bold text-lg mt-1 mb-2">بحور خليل بن أحمد العروضي</h3>
                     <p className="text-xs text-gray-100 leading-relaxed">
-                      يحتوي هذا النظام على ١٥ بحراً عروضياً متكاملاً، تخدم كقالب دقيق لنظم أروع القصائد مع مطابقتها للمعجم البلاغي.
+                      يحتوي هذا نظام على ١٥ بحراً عروضياً متكاملاً، تخدم كقالب دقيق لنظم أروع القصائد مع مطابقتها للمعجم البلاغي.
                     </p>
                   </div>
                 </div>
 
-                {/* Offline Saved poems list history */}
-                <HistoryList
-                  history={history}
-                  onSelectPoem={handleSelectFromHistory}
-                  onDeletePoem={handleDeletePoem}
-                  onToggleFavorite={handleToggleFavorite}
-                  onClearAll={handleClearHistory}
-                />
+                {/* Diwan / History section */}
+                {!user ? (
+                  <div className={`border rounded-2xl p-5 text-center ${
+                    isDarkMode ? 'bg-[#102216]/40 border-[#dfba6b]/20 text-white' : 'bg-manuscript-paper border-[#b58d3d]/40 text-gray-800'
+                  }`}>
+                    <Award className="w-8 h-8 text-[#dfba6b] mx-auto mb-2 animate-pulse" />
+                    <h4 className="font-serif font-black text-xs text-[#1a472a] dark:text-[#dfba6b] mb-1 font-bold">سجل الدخول لمشاهدة ديوانك</h4>
+                    <p className="text-[10px] text-gray-400 leading-normal mb-3">
+                      يرجى تسجيل الدخول لحفظ قصائدك الموزونة ومراجعة دواوينك عبر سحابتنا المؤمنة.
+                    </p>
+                    <button
+                      onClick={handleSignInWithGoogle}
+                      className="px-4 py-2 bg-[#1a472a] hover:bg-[#153a22] text-white font-serif font-bold text-[10px] rounded-lg transition-all shadow-md cursor-pointer flex items-center justify-center gap-1 mx-auto"
+                    >
+                      <Award className="w-3 h-3 text-[#dfba6b]" />
+                      سجل الدخول بواسطة Google
+                    </button>
+                  </div>
+                ) : (
+                  <HistoryList
+                    history={history}
+                    onSelectPoem={handleSelectFromHistory}
+                    onDeletePoem={handleDeletePoem}
+                    onToggleFavorite={handleToggleFavorite}
+                    onClearAll={handleClearHistory}
+                  />
+                )}
 
                 {/* Beautiful Vintage Card showing Diwan legacy */}
                 <div className={`border rounded-2xl p-5 shadow-sm relative text-center ${
@@ -1531,75 +1841,56 @@ export default function App() {
         )}
 
         {activeMainTab === 'archive' && (
-          <div className="animate-fade-in max-w-4xl mx-auto w-full">
-            <div className="mb-4">
-              <h2 className={`text-xl font-bold font-serif ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>خِزَانَةُ الدِّيوَانِ الشَّخْصِيَّة</h2>
-              <p className="text-xs text-gray-500">مراجعة والبحث والوصول لجميع مأثوراتك الشعرية التي نظمتها على المنصة.</p>
-            </div>
-            
-            {/* Inline selected poem in archive if chosen */}
-            {currentPoem && (
-              <div className="mb-6 bg-amber-500/5 p-4 rounded-2xl border border-amber-500/15 animate-fade-in">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-serif font-black text-[#1a472a] text-sm">مستعرض المخطوطة المحدد:</h3>
-                  <button 
-                    onClick={() => setCurrentPoem(null)}
-                    className="text-xs text-[#8b1d2e] hover:underline"
-                  >
-                    إغلاق المعاينة
-                  </button>
-                </div>
-                <PoemDisplay poem={currentPoem} onReset={() => setCurrentPoem(null)} />
+          <div className="animate-fade-in max-w-4xl mx-auto w-full text-right" dir="rtl">
+            {!user ? (
+              <div className={`border rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 shadow-sm min-h-[300px] ${
+                isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/20 text-gray-800'
+              }`}>
+                <Award className="w-12 h-12 text-[#dfba6b] mx-auto mb-4 animate-pulse" />
+                <h3 className="font-serif font-black text-xl mb-2">سجل الدخول لمشاهدة ديوانك.</h3>
+                <p className="text-xs text-gray-400 max-w-md mx-auto mb-6 leading-relaxed">
+                  الديوان الشخصي يتيح لك حفظ ومراجعة قصائدك الموزونة عبر خوادمنا السحابية المشفرة والوصول إليها من أي مكان.
+                </p>
+                <button
+                  onClick={handleSignInWithGoogle}
+                  className="px-6 py-3 bg-[#1a472a] hover:bg-[#153a22] text-white font-serif font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 mx-auto"
+                >
+                  <Award className="w-4 h-4 text-[#dfba6b]" />
+                  سجل الدخول بواسطة Google لمشاهدة ديوانك.
+                </button>
               </div>
-            )}
-
-            <HistoryList
-              history={history}
-              onSelectPoem={handleSelectFromHistory}
-              onDeletePoem={handleDeletePoem}
-              onToggleFavorite={handleToggleFavorite}
-              onClearAll={handleClearHistory}
-            />
-          </div>
-        )}
-
-        {activeMainTab === 'meters' && (
-          <div className="animate-fade-in space-y-6">
-            <div>
-              <h2 className={`text-2xl font-serif font-black ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>مَوْسُوعَةُ البحورِ والأوزَانِ العربيَّة</h2>
-              <p className="text-xs text-gray-500">دراسة ومعاينة تفاعلية لبحور خليل بن أحمد الفراهيدي، تفعيلاتها، تراكيبها، وأمثلتها المأثورة.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.keys(METERS_DATA).map((key) => {
-                const met = METERS_DATA[key];
-                return (
-                  <div key={key} className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden ${
-                    isDarkMode ? 'bg-[#102216] border-[#dfba6b]/20 text-[#eefaf3]' : 'bg-white border-manuscript-border text-gray-800'
-                  }`}>
-                    <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-[#dfba6b]/5 to-transparent pointer-events-none" />
-                    
-                    <span className="text-[10px] font-black uppercase text-[#8b1d2e] bg-red-50 dark:bg-[#8b1d2e]/10 px-2 py-0.5 rounded">بحر كلاسيكي</span>
-                    <h3 className="font-serif font-black text-xl text-royal-800 dark:text-[#dfba6b] mt-2 mb-1">بحر {met.name}</h3>
-                    
-                    <div className="bg-royal-50/50 dark:bg-[#0a120d] p-2.5 rounded-lg border border-gray-100 dark:border-white/5 my-3">
-                      <span className="text-[9px] text-gray-400 font-bold block mb-0.5">تفعيلاته:</span>
-                      <p className="font-serif font-bold text-xs text-[#8b1d2e] tracking-wide" dir="ltr">{met.feet}</p>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <h2 className={`text-xl font-bold font-serif ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>خِزَانَةُ الدِّيوَانِ الشَّخْصِيَّة</h2>
+                  <p className="text-xs text-gray-500">مراجعة والبحث والوصول لجميع مأثوراتك الشعرية التي نظمتها على المنصة.</p>
+                </div>
+                
+                {/* Inline selected poem in archive if chosen */}
+                {currentPoem && (
+                  <div className="mb-6 bg-amber-500/5 p-4 rounded-2xl border border-amber-500/15 animate-fade-in text-right">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-serif font-black text-[#1a472a] text-sm">مستعرض المخطوطة المحدد:</h3>
+                      <button 
+                        onClick={() => setCurrentPoem(null)}
+                        className="text-xs text-[#8b1d2e] hover:underline"
+                      >
+                        إغلاق المعاينة
+                      </button>
                     </div>
-
-                    <p className="text-xs text-gray-500 leading-relaxed mb-4">{met.description}</p>
-                    
-                    {met.example && (
-                      <div className="border-t border-dashed border-gray-100 pt-3">
-                        <span className="text-[9px] text-gray-400 font-bold block mb-1">شاهد من تراث البحر:</span>
-                        <p className="font-serif italic text-xs text-royal-900 dark:text-[#aef8cf] leading-normal font-bold">"{met.example.verse}"</p>
-                        <span className="text-[9px] text-gray-400 block text-left mt-0.5">— {met.example.poet}</span>
-                      </div>
-                    )}
+                    <PoemDisplay poem={currentPoem} onReset={() => setCurrentPoem(null)} />
                   </div>
-                );
-              })}
-            </div>
+                )}
+
+                <HistoryList
+                  history={history}
+                  onSelectPoem={handleSelectFromHistory}
+                  onDeletePoem={handleDeletePoem}
+                  onToggleFavorite={handleToggleFavorite}
+                  onClearAll={handleClearHistory}
+                />
+              </>
+            )}
           </div>
         )}
 
@@ -1616,6 +1907,7 @@ export default function App() {
               user={user}
               onUpdateRemainingUses={(uses) => setRemainingDailyUses(uses)}
               onUpdateUserPlanId={(id) => setUserPlanId(id)}
+              onSignIn={handleSignInWithGoogle}
             />
           </div>
         )}
