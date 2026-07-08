@@ -1000,6 +1000,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
                           className="text-xs p-2 rounded-lg bg-gray-50 dark:bg-[#0a120d] border border-gray-200 dark:border-white/10 outline-none cursor-pointer"
                         >
                           <option value="all">كل الخطط</option>
+                          <option value="member">العضو (100 استخدام)</option>
+                          <option value="premium">المميزة (500 استخدام)</option>
                           <option value="silver">الفضية (Pro)</option>
                           <option value="gold">الذهبية (Premium)</option>
                           <option value="free">المجانية</option>
@@ -1026,8 +1028,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
                                 return matchesSearch && matchesFilter;
                               })
                               .map((userRow: any) => {
-                                const isSilver = userRow.planId === 'silver';
-                                const isGold = userRow.planId === 'gold';
+                                const isSilver = userRow.planId === 'silver' || userRow.planId === 'member';
+                                const isGold = userRow.planId === 'gold' || userRow.planId === 'premium';
                                 const isActive = userRow.subscriptionStatus === 'active' || userRow.subscriptionStatus === 'trialing';
 
                                 return (

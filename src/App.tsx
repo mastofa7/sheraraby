@@ -43,6 +43,8 @@ import SubscriptionPlans from './components/SubscriptionPlans';
 import { METERS_DATA } from './metersData';
 import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 import TurnstileWidget from './components/TurnstileWidget';
+import WelcomePage from './components/WelcomePage';
+import GatewayPage from './components/GatewayPage';
 
 import { auth, googleProvider, apiFetch } from './firebase';
 import { signInWithPopup, signInAnonymously, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -124,6 +126,7 @@ export default function App() {
   const [popupClosedError, setPopupClosedError] = useState<boolean>(false);
   const [paymentVerifying, setPaymentVerifying] = useState<boolean>(false);
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
+  const [isPlatformEntered, setIsPlatformEntered] = useState<boolean>(false);
 
   // Listen to Auth State Changes
   useEffect(() => {
@@ -185,6 +188,7 @@ export default function App() {
       await signOut(auth);
       setUser(null);
       setUserRole('user');
+      setIsPlatformEntered(false);
     } catch (err: any) {
       console.error('Logout error:', err);
       setError('حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى.');
@@ -332,13 +336,17 @@ export default function App() {
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
 
   // ميزات متقدمة
-  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin'>('studio');
+  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin' | 'subscriptions'>('studio');
 
   // Secure Redirection: If non-admin attempts to access admin tab, redirect silently to studio
   useEffect(() => {
     if (activeMainTab === 'admin') {
       const isAdmin = user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin');
       if (!isAdmin) {
+        setActiveMainTab('studio');
+      }
+    } else if (activeMainTab === 'subscriptions') {
+      if (!user) {
         setActiveMainTab('studio');
       }
     }
@@ -691,7 +699,32 @@ export default function App() {
     }
   };
 
+  if (!user) {
+    return (
+      <WelcomePage
+        onSignInWithGoogle={handleSignInWithGoogle}
+        isDarkMode={isDarkMode}
+        unauthorizedDomainError={unauthorizedDomainError}
+        popupClosedError={popupClosedError}
+        error={error}
+      />
+    );
+  }
 
+  if (!isPlatformEntered) {
+    return (
+      <GatewayPage
+        user={user}
+        userPlanId={userPlanId}
+        userPlanLimit={userPlanLimit}
+        remainingDailyUses={remainingDailyUses}
+        isUserAdmin={isUserAdmin}
+        onEnterPlatform={() => setIsPlatformEntered(true)}
+        onSignOut={handleSignOut}
+        isDarkMode={isDarkMode}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col transition-all duration-300 ${
@@ -783,9 +816,9 @@ export default function App() {
             {/* Subscription status display in header */}
             {user && (
               <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 select-none ${
-                userPlanId === 'gold'
+                userPlanId === 'gold' || userPlanId === 'premium'
                   ? 'border-amber-400 bg-amber-500/15 text-amber-300 shadow-xs'
-                  : userPlanId === 'silver'
+                  : userPlanId === 'silver' || userPlanId === 'member'
                   ? 'border-slate-300 bg-slate-400/15 text-slate-100'
                   : isDarkMode
                   ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]'
@@ -795,7 +828,7 @@ export default function App() {
               title="إدارة الباقة والعدادات الأدبية"
               >
                 <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-                <span>الباقة: {isUserAdmin ? 'المالك / بلا حدود' : (userPlanId === 'gold' ? 'المميزة' : userPlanId === 'silver' ? 'الاحترافية' : userPlanId === 'free' ? 'المجانية' : 'الزائر')}</span>
+                <span>الباقة: {isUserAdmin ? 'المالك / بلا حدود' : (userPlanId === 'gold' || userPlanId === 'premium' ? 'الاحترافية' : userPlanId === 'silver' || userPlanId === 'member' ? 'المتوسطة' : userPlanId === 'free' ? 'المجانية' : 'الزائر')}</span>
                 {remainingDailyUses !== null && (
                   <span className="text-[10px] opacity-85 border-r border-white/20 pr-1.5 font-sans mr-0.5">
                     {isUserAdmin ? '∞' : remainingDailyUses} متبقي
@@ -884,17 +917,19 @@ export default function App() {
             تحليلات الشاعر البيانية
           </button>
 
-          <button
-            onClick={() => setActiveMainTab('subscriptions')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'subscriptions'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-amber-400 border border-amber-500/30 hover:bg-amber-500/10'
-            }`}
-          >
-            <Crown className="w-3.5 h-3.5" />
-            الاشتراكات
-          </button>
+          {user && (
+            <button
+              onClick={() => setActiveMainTab('subscriptions')}
+              className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                activeMainTab === 'subscriptions'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-amber-400 border border-amber-500/30 hover:bg-amber-500/10'
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5" />
+              الاشتراكات
+            </button>
+          )}
 
           {user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
             <button
@@ -1907,7 +1942,6 @@ export default function App() {
               user={user}
               onUpdateRemainingUses={(uses) => setRemainingDailyUses(uses)}
               onUpdateUserPlanId={(id) => setUserPlanId(id)}
-              onSignIn={handleSignInWithGoogle}
             />
           </div>
         )}

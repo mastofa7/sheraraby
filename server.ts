@@ -20,299 +20,23 @@ import {
   addDevLog 
 } from './src/backend-logic';
 
+import { UsersService } from './server/services/usersService';
+import { SubscriptionsService } from './server/services/subscriptionsService';
+import { PaymentsService } from './server/services/paymentsService';
+import { PlansService } from './server/services/plansService';
+import { UsageLogsService } from './server/services/usageLogsService';
+
+import { db, isFirebaseAdminInitialized } from './server/db';
+
 // Load environment variables
 dotenv.config();
 
 const PORT = 3000;
 const app = express();
 
-// Initialize Firebase Admin SDK using local config file
-let isFirebaseAdminInitialized = false;
-let db: any = null;
 const registeredUsersSet = new Set<string>();
 
-// Custom chainable Firestore REST client to bypass container permission issues
-function parseFirestoreValue(valueObj: any): any {
-  if (!valueObj) return null;
-  if ('stringValue' in valueObj) return valueObj.stringValue;
-  if ('integerValue' in valueObj) return parseInt(valueObj.integerValue);
-  if ('doubleValue' in valueObj) return parseFloat(valueObj.doubleValue);
-  if ('booleanValue' in valueObj) return valueObj.booleanValue;
-  if ('timestampValue' in valueObj) return valueObj.timestampValue;
-  if ('arrayValue' in valueObj) {
-    const values = valueObj.arrayValue.values || [];
-    return values.map((v: any) => parseFirestoreValue(v));
-  }
-  if ('mapValue' in valueObj) {
-    const fields = valueObj.mapValue.fields || {};
-    const obj: any = {};
-    for (const [k, v] of Object.entries(fields)) {
-      obj[k] = parseFirestoreValue(v);
-    }
-    return obj;
-  }
-  return null;
-}
-
-function formatFirestoreValue(val: any): any {
-  if (typeof val === 'string') return { stringValue: val };
-  if (typeof val === 'number') {
-    if (Number.isInteger(val)) return { integerValue: String(val) };
-    return { doubleValue: val };
-  }
-  if (typeof val === 'boolean') return { booleanValue: val };
-  if (Array.isArray(val)) {
-    return {
-      arrayValue: {
-        values: val.map(v => formatFirestoreValue(v))
-      }
-    };
-  }
-  if (typeof val === 'object') {
-    const fields: any = {};
-    for (const [k, v] of Object.entries(val)) {
-      fields[k] = formatFirestoreValue(v);
-    }
-    return {
-      mapValue: { fields }
-    };
-  }
-  return { nullValue: null };
-}
-
-async function getRestDocument(config: any, collection: string, docId: string): Promise<any> {
-  try {
-    const dbId = config.firestoreDatabaseId || '(default)';
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}/${docId}?key=${config.apiKey}`;
-    const res = await fetch(url);
-    if (res.status === 404) return null;
-    if (!res.ok) return null;
-    const doc: any = await res.json();
-    const fields = doc.fields || {};
-    const obj: any = {};
-    for (const [key, val] of Object.entries(fields)) {
-      obj[key] = parseFirestoreValue(val);
-    }
-    return obj;
-  } catch (err) {
-    return null;
-  }
-}
-
-async function setRestDocument(config: any, collection: string, docId: string, data: any, options?: { merge?: boolean }) {
-  try {
-    const dbId = config.firestoreDatabaseId || '(default)';
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}/${docId}?key=${config.apiKey}`;
-    const fields: any = {};
-    for (const [key, val] of Object.entries(data)) {
-      if (val === null || val === undefined) continue;
-      fields[key] = formatFirestoreValue(val);
-    }
-    
-    let patchUrl = url;
-    if (options?.merge) {
-      const keys = Object.keys(data);
-      const maskParams = keys.map(k => `updateMask.fieldPaths=${k}`).join('&');
-      if (maskParams) {
-        patchUrl = `${url}&${maskParams}`;
-      }
-    }
-
-    await fetch(patchUrl, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields })
-    });
-  } catch (err) {
-    console.error(`Error in setRestDocument:`, err);
-  }
-}
-
-async function deleteRestDocument(config: any, collection: string, docId: string) {
-  try {
-    const dbId = config.firestoreDatabaseId || '(default)';
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}/${docId}?key=${config.apiKey}`;
-    await fetch(url, { method: 'DELETE' });
-  } catch (err) {
-    console.error(`Error in deleteRestDocument:`, err);
-  }
-}
-
-async function addRestDocument(config: any, collection: string, data: any) {
-  try {
-    const dbId = config.firestoreDatabaseId || '(default)';
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}?key=${config.apiKey}`;
-    const fields: any = {};
-    for (const [key, val] of Object.entries(data)) {
-      if (val === null || val === undefined) continue;
-      fields[key] = formatFirestoreValue(val);
-    }
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields })
-    });
-    if (!res.ok) return { id: Math.random().toString(36).substring(7) };
-    const doc: any = await res.json();
-    return { id: doc.name.split('/').pop() };
-  } catch (err) {
-    return { id: Math.random().toString(36).substring(7) };
-  }
-}
-
-async function fetchRestDocuments(config: any, collection: string, queryConstraints: any[] = []): Promise<any[]> {
-  try {
-    const dbId = config.firestoreDatabaseId || '(default)';
-    if (queryConstraints.length === 0) {
-      const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}?key=${config.apiKey}&pageSize=1000`;
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const data: any = await res.json();
-      if (!data.documents) return [];
-      return data.documents.map((doc: any) => {
-        const fields = doc.fields || {};
-        const obj: any = { id: doc.name.split('/').pop() };
-        for (const [key, val] of Object.entries(fields)) {
-          obj[key] = parseFirestoreValue(val);
-        }
-        return obj;
-      });
-    }
-
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents:runQuery?key=${config.apiKey}`;
-    const opMap: Record<string, string> = {
-      '==': 'EQUAL',
-      '<': 'LESS_THAN',
-      '<=': 'LESS_THAN_OR_EQUAL',
-      '>': 'GREATER_THAN',
-      '>=': 'GREATER_THAN_OR_EQUAL',
-      'array-contains': 'ARRAY_CONTAINS'
-    };
-
-    let filters: any = null;
-    if (queryConstraints.length === 1) {
-      const { field, op, val } = queryConstraints[0];
-      filters = {
-        fieldFilter: {
-          field: { fieldPath: field },
-          op: opMap[op] || 'EQUAL',
-          value: formatFirestoreValue(val)
-        }
-      };
-    } else if (queryConstraints.length > 1) {
-      filters = {
-        compositeFilter: {
-          op: 'AND',
-          filters: queryConstraints.map(({ field, op, val }) => ({
-            fieldFilter: {
-              field: { fieldPath: field },
-              op: opMap[op] || 'EQUAL',
-              value: formatFirestoreValue(val)
-            }
-          }))
-        }
-      };
-    }
-
-    const queryBody: any = {
-      structuredQuery: {
-        from: [{ collectionId: collection }]
-      }
-    };
-    if (filters) {
-      queryBody.structuredQuery.where = filters;
-    }
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(queryBody)
-    });
-    if (!res.ok) return [];
-    const results: any = await res.json();
-    if (!Array.isArray(results)) return [];
-
-    const documents: any[] = [];
-    results.forEach((item: any) => {
-      if (item.document) {
-        const doc = item.document;
-        const fields = doc.fields || {};
-        const obj: any = { id: doc.name.split('/').pop() };
-        for (const [key, val] of Object.entries(fields)) {
-          obj[key] = parseFirestoreValue(val);
-        }
-        documents.push(obj);
-      }
-    });
-    return documents;
-  } catch (err) {
-    return [];
-  }
-}
-
-class RestCollection {
-  constructor(private config: any, private collectionName: string, private queryConstraints: any[] = []) {}
-
-  where(field: string, op: string, val: any) {
-    return new RestCollection(this.config, this.collectionName, [...this.queryConstraints, { field, op, val }]);
-  }
-
-  doc(docId: string) {
-    return new RestDoc(this.config, this.collectionName, docId);
-  }
-
-  async add(data: any) {
-    return addRestDocument(this.config, this.collectionName, data);
-  }
-
-  async get() {
-    const docs = await fetchRestDocuments(this.config, this.collectionName, this.queryConstraints);
-    return {
-      forEach: (callback: (doc: any) => void) => {
-        docs.forEach(doc => {
-          callback({
-            id: doc.id,
-            data: () => doc
-          });
-        });
-      },
-      size: docs.length,
-      docs: docs.map(doc => ({
-        id: doc.id,
-        data: () => doc
-      }))
-    };
-  }
-}
-
-class RestDoc {
-  constructor(private config: any, private collectionName: string, private docId: string) {}
-
-  async get() {
-    const data = await getRestDocument(this.config, this.collectionName, this.docId);
-    return {
-      exists: data !== null,
-      data: () => data,
-      id: this.docId
-    };
-  }
-
-  async set(data: any, options?: { merge?: boolean }) {
-    return setRestDocument(this.config, this.collectionName, this.docId, data, options);
-  }
-
-  async delete() {
-    return deleteRestDocument(this.config, this.collectionName, this.docId);
-  }
-}
-
-class RestFirestore {
-  constructor(private config: any) {}
-  collection(name: string) {
-    return new RestCollection(this.config, name);
-  }
-}
-
+// Initialize Firebase Admin SDK using local config file
 try {
   const firebaseConfigPath = path.join(process.cwd(), 'firebase-applet-config.json');
   if (fs.existsSync(firebaseConfigPath)) {
@@ -323,9 +47,6 @@ try {
       });
       console.log(`[Firebase Admin] Initialized successfully with project ID: ${firebaseConfig.projectId}`);
     }
-    isFirebaseAdminInitialized = true;
-    db = new RestFirestore(firebaseConfig);
-    console.log('[Rest Firestore] Chainable REST client initialized successfully.');
   } else {
     console.warn('[Firebase Admin] Warning: firebase-applet-config.json not found. Token verification will be skipped.');
   }
@@ -361,28 +82,32 @@ async function authenticateFirebaseToken(req: any, res: express.Response, next: 
       if (decodedToken.uid) {
         registeredUsersSet.add(decodedToken.uid);
         
-        // Fetch from Firestore
-        let plan = 'free';
-        if (db) {
-          try {
-            const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-            if (userDoc.exists) {
-              const userData = userDoc.data();
-              plan = userData?.planId || 'free';
-            }
-          } catch (fsErr) {
-            console.error('[Firestore] Error fetching user plan, falling back to memory:', fsErr);
-            plan = userPlans.get(`uid:${decodedToken.uid}`) || 'free';
-          }
+        // Fetch from Firestore using UsersService
+        const firestoreUser = await UsersService.getOrCreateUser(decodedToken.uid, {
+          email: decodedToken.email,
+          name: decodedToken.name,
+          picture: decodedToken.picture
+        });
+
+        if (firestoreUser) {
+          req.userPlan = firestoreUser.planId;
+          req.userData = firestoreUser;
         } else {
-          plan = userPlans.get(`uid:${decodedToken.uid}`) || 'free';
+          req.userPlan = 'free';
         }
-        req.userPlan = plan;
       }
       console.log(`[Auth] Authenticated user UID: ${decodedToken.uid}, Plan: ${req.userPlan}`);
     }
   } catch (err) {
     console.error('[Auth] Failed to verify ID token:', err);
+  }
+  next();
+}
+
+// Middleware to enforce authentication
+function requireAuth(req: any, res: express.Response, next: express.NextFunction) {
+  if (!req.user || !req.user.uid) {
+    return res.status(401).json({ error: 'عذراً، يجب عليك تسجيل الدخول أولاً للوصول إلى هذه الميزة.' });
   }
   next();
 }
@@ -567,19 +292,33 @@ export const SUBSCRIPTION_PLANS = {
     id: 'free',
     name: 'الخطة المجانية',
     price: '0 دولار',
-    limit: 30,
-    features: ['تحليل عروض وبحور الشعر', 'تكملة القوافي والبحور المتقاطعة', 'حفظ القصائد بالأرشيف', '٣٠ استخداماً يومياً متاحاً']
+    limit: 10,
+    features: ['تحليل عروض وبحور الشعر', 'تكملة القوافي والبحور المتقاطعة', 'حفظ القصائد بالأرشيف', '١٠ استخدامات يومية كحد أقصى']
+  },
+  member: {
+    id: 'member',
+    name: 'الخطة المتوسطة',
+    price: '20 دولار شهرياً',
+    limit: 100,
+    features: ['جميع مميزات الخطة المجانية', 'أولوية معالجة فائقة السرعة', 'أداة المعارضة الشعرية المتقدمة', 'المحسنات البديعية والبلاغية كاملة', '١٠٠ استخدام يومياً متاحاً']
+  },
+  premium: {
+    id: 'premium',
+    name: 'الخطة الاحترافية',
+    price: '80 دولار شهرياً',
+    limit: 500,
+    features: ['جميع ميزات المنصة والذكاء الاصطناعي بلا قيود', 'أقصى سرعة استجابة فائقة من Gemini', 'استشارات ومقترحات شعرية متقدمة ودقيقة', 'دعم فني خاص على مدار الساعة', '٥٠٠ استخدام يومي متاح']
   },
   silver: {
-    id: 'silver',
-    name: 'الخطة الاحترافية',
+    id: 'member',
+    name: 'الخطة المتوسطة',
     price: '20 دولار شهرياً',
     limit: 100,
     features: ['جميع مميزات الخطة المجانية', 'أولوية معالجة فائقة السرعة', 'أداة المعارضة الشعرية المتقدمة', 'المحسنات البديعية والبلاغية كاملة', '١٠٠ استخدام يومياً متاحاً']
   },
   gold: {
-    id: 'gold',
-    name: 'الخطة المميزة',
+    id: 'premium',
+    name: 'الخطة الاحترافية',
     price: '80 دولار شهرياً',
     limit: 500,
     features: ['جميع ميزات المنصة والذكاء الاصطناعي بلا قيود', 'أقصى سرعة استجابة فائقة من Gemini', 'استشارات ومقترحات شعرية متقدمة ودقيقة', 'دعم فني خاص على مدار الساعة', '٥٠٠ استخدام يومي متاح']
@@ -613,6 +352,66 @@ function getMaxDailyUses(req: any): number {
   const planId = getUserPlan(req);
   const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
   return plan ? plan.limit : SUBSCRIPTION_PLANS.visitor.limit;
+}
+
+async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLimit: number; usedToday: number; remainingDailyUses: number }> {
+  const isAdmin = isUserAdmin(req);
+  if (isAdmin) {
+    return { allowed: true, maxLimit: 99999, usedToday: 0, remainingDailyUses: 99999 };
+  }
+
+  if (req.user && req.user.uid) {
+    const uid = req.user.uid;
+    // Fetch latest user state and perform daily reset check if needed
+    const user = await UsersService.getOrCreateUser(uid, {
+      email: req.user.email,
+      name: req.user.name,
+      picture: req.user.picture
+    });
+
+    if (!user) {
+      return { allowed: false, maxLimit: 10, usedToday: 10, remainingDailyUses: 0 };
+    }
+
+    if (user.remainingToday <= 0) {
+      const used = user.dailyLimit - user.remainingToday;
+      return {
+        allowed: false,
+        maxLimit: user.dailyLimit,
+        usedToday: used,
+        remainingDailyUses: 0
+      };
+    }
+
+    // Atomically decrement remainingToday and save user doc
+    await UsersService.consumeUsage(uid);
+    // Increment usage_logs record and return total requests used today
+    const usedToday = await UsageLogsService.incrementUsage(uid);
+
+    return {
+      allowed: true,
+      maxLimit: user.dailyLimit,
+      usedToday,
+      remainingDailyUses: user.remainingToday - 1
+    };
+  } else {
+    // Visitor fallback (IP-based)
+    const maxLimit = getMaxDailyUses(req);
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+
+    if (currentCount >= maxLimit) {
+      return { allowed: false, maxLimit, usedToday: currentCount, remainingDailyUses: 0 };
+    }
+
+    localDailyLimits.set(key, currentCount + 1);
+    return {
+      allowed: true,
+      maxLimit,
+      usedToday: currentCount + 1,
+      remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1))
+    };
+  }
 }
 
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
@@ -753,13 +552,33 @@ app.get('/api/health', (req, res) => {
 });
 
 // App configuration endpoint
-app.get('/api/config', (req: any, res) => {
-  const key = getLocalLimitKey(req);
-  const currentCount = localDailyLimits.get(key) || 0;
-  const maxLimit = getMaxDailyUses(req);
+app.get('/api/config', async (req: any, res) => {
+  let remainingToday = 10;
+  let maxLimit = 10;
+  let usedToday = 0;
   const planId = getUserPlan(req);
   const isAdmin = isUserAdmin(req);
-  
+
+  if (req.user && req.user.uid) {
+    const user = await UsersService.getOrCreateUser(req.user.uid, {
+      email: req.user.email,
+      name: req.user.name,
+      picture: req.user.picture
+    });
+    if (user) {
+      maxLimit = user.dailyLimit;
+      remainingToday = user.remainingToday;
+      usedToday = user.dailyLimit - user.remainingToday;
+    }
+  } else {
+    // Visitor fallback
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+    maxLimit = getMaxDailyUses(req);
+    remainingToday = Math.max(0, maxLimit - currentCount);
+    usedToday = currentCount;
+  }
+
   // If we are in local development or preview mode (e.g. *.run.app), return the testing sitekey to avoid error 110200
   const isDev = isDevOrPreview(req);
   const siteKey = isDev 
@@ -768,65 +587,108 @@ app.get('/api/config', (req: any, res) => {
 
   res.json({
     TURNSTILE_SITE_KEY: siteKey,
-    remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - currentCount),
+    remainingDailyUses: isAdmin ? 99999 : remainingToday,
     maxLimit: isAdmin ? 99999 : maxLimit,
-    usedToday: currentCount,
+    usedToday: isAdmin ? 0 : usedToday,
     planId,
     role: isAdmin ? 'admin' : 'user'
   });
 });
 
 // Get user subscription plan info
-app.get('/api/user/plan', (req: any, res) => {
+app.get('/api/user/plan', async (req: any, res) => {
   const planId = getUserPlan(req);
-  const key = getLocalLimitKey(req);
-  const currentCount = localDailyLimits.get(key) || 0;
-  const maxLimit = getMaxDailyUses(req);
   const isAdmin = isUserAdmin(req);
+  let remainingToday = 10;
+  let maxLimit = 10;
+  let usedToday = 0;
+
+  if (req.user && req.user.uid) {
+    const user = await UsersService.getOrCreateUser(req.user.uid, {
+      email: req.user.email,
+      name: req.user.name,
+      picture: req.user.picture
+    });
+    if (user) {
+      maxLimit = user.dailyLimit;
+      remainingToday = user.remainingToday;
+      usedToday = user.dailyLimit - user.remainingToday;
+    }
+  } else {
+    // Visitor fallback
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+    maxLimit = getMaxDailyUses(req);
+    remainingToday = Math.max(0, maxLimit - currentCount);
+    usedToday = currentCount;
+  }
 
   res.json({
     planId,
     plan: SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS],
     maxLimit: isAdmin ? 99999 : maxLimit,
-    usedToday: currentCount,
-    remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - currentCount),
+    usedToday: isAdmin ? 0 : usedToday,
+    remainingDailyUses: isAdmin ? 99999 : remainingToday,
     allPlans: SUBSCRIPTION_PLANS,
     role: isAdmin ? 'admin' : 'user'
   });
 });
 
 // Update or Upgrade user plan (simulated subscription upgrade)
-app.post('/api/user/plan', (req: any, res) => {
+app.post('/api/user/plan', async (req: any, res) => {
   const { plan: targetPlanId } = req.body;
   if (!targetPlanId || !SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS]) {
     return res.status(400).json({ error: 'خطة غير صالحة أو غير متوفرة.' });
   }
 
+  let remainingToday = 10;
+  let maxLimit = 10;
+  let usedToday = 0;
+
   if (req.user && req.user.uid) {
-    userPlans.set(`uid:${req.user.uid}`, targetPlanId);
-    if (db) {
-      db.collection('users').doc(req.user.uid).set({
+    const user = await UsersService.updateUserPlan(req.user.uid, targetPlanId, 'active');
+    if (user) {
+      maxLimit = user.dailyLimit;
+      remainingToday = user.remainingToday;
+      usedToday = user.dailyLimit - user.remainingToday;
+
+      // Automatically log subscription history
+      const activeSub = await SubscriptionsService.createSubscription({
+        uid: req.user.uid,
         planId: targetPlanId,
-        email: req.user.email || null,
-        subscriptionStatus: 'active',
-        updatedAt: new Date().toISOString()
-      }, { merge: true }).catch((err: any) => console.error('[Firestore Error]:', err));
+        paymentProvider: 'simulated',
+        paymentReference: `ref_${Date.now()}`
+      });
+
+      if (activeSub) {
+        await PaymentsService.createPayment({
+          uid: req.user.uid,
+          subscriptionId: activeSub.subscriptionId,
+          amount: targetPlanId === 'premium' ? 80 : (targetPlanId === 'member' ? 20 : 0),
+          currency: 'USD',
+          provider: 'simulated',
+          status: 'success',
+          transactionId: `txn_${Date.now()}`
+        });
+      }
     }
   } else {
     const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
     userPlans.set(`ip:${ip}`, targetPlanId);
+    
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+    maxLimit = SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS].limit;
+    remainingToday = Math.max(0, maxLimit - currentCount);
+    usedToday = currentCount;
   }
-
-  const newLimit = SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS].limit;
-  const key = getLocalLimitKey(req);
-  const currentCount = localDailyLimits.get(key) || 0;
 
   res.json({
     success: true,
     planId: targetPlanId,
-    maxLimit: newLimit,
-    usedToday: currentCount,
-    remainingDailyUses: Math.max(0, newLimit - currentCount),
+    maxLimit,
+    usedToday,
+    remainingDailyUses: remainingToday,
     message: `تم ترقية خطتك بنجاح إلى الباقة الأدبية ${SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS].name}.`
   });
 });
@@ -919,34 +781,113 @@ app.post('/api/payment/webhook', async (req: any, res) => {
     const provider = PaymentManager.getProvider();
     const result = await provider.handleWebhook(req.body, req.headers, req.rawBody);
 
-    if (result.processed && result.userId && result.planId) {
-      const userId = result.userId;
-      const planId = result.planId;
-      const status = result.status || 'active';
+    if (!result.processed) {
+      console.error('[Payment Webhook] Webhook signature verification or processing failed.');
+      return res.status(400).send('Invalid webhook signature or payload');
+    }
 
-      if (status === 'active') {
-        console.log(`[Payment Webhook] Upgrading user ${userId} to ${planId}`);
-        if (db) {
-          await db.collection('users').doc(userId).set({
-            planId,
-            paymentProvider: provider.name,
-            subscriptionStatus: 'active',
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-        }
-        userPlans.set(`uid:${userId}`, planId);
-      } else {
-        console.log(`[Payment Webhook] Downgrading user ${userId} due to non-active status: ${status}`);
-        if (db) {
-          await db.collection('users').doc(userId).set({
-            planId: 'free',
-            subscriptionStatus: status,
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-        }
-        userPlans.set(`uid:${userId}`, 'free');
+    const transactionId = req.body?.obj?.id?.toString();
+
+    // 1. Check for Duplicate Webhooks
+    if (transactionId && db) {
+      const existingPayments = await db.collection('payments').where('transactionId', '==', transactionId).get();
+      if (existingPayments.size > 0) {
+        console.log(`[Payment Webhook] Duplicate Webhook detected. Transaction ID ${transactionId} already processed.`);
+        addDevLog('paymob_webhook', JSON.stringify(req.body), `إشعار مكرر لعملية الدفع رقم ${transactionId}. تم تجاهله تفادياً للتكرار.`);
+        return res.json({ received: true, alreadyProcessed: true });
       }
     }
+
+    // 2. If Payment Failed: Do not change anything
+    if (result.status !== 'active') {
+      console.log(`[Payment Webhook] Webhook status is not active: ${result.status}. No plan changes applied.`);
+      addDevLog('paymob_webhook', JSON.stringify(req.body), `فشلت عملية الدفع أو لم تكتمل بعد لطلب الدفع رقم ${transactionId}. لم يتم تغيير أي شيء لحساب المستخدم.`);
+      return res.json({ received: true, status: result.status });
+    }
+
+    // 3. Search for the User
+    const userId = result.userId;
+    if (!userId || !db) {
+      console.error('[Payment Webhook] Missing userId in paymob payload.');
+      return res.status(400).send('Missing userId');
+    }
+
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      console.error(`[Payment Webhook] User with ID ${userId} not found in Firestore.`);
+      addDevLog('paymob_webhook', JSON.stringify(req.body), `فشل العثور على المستخدم صاحب الرقم التعريفي ${userId} في قاعدة البيانات.`);
+      return res.status(404).send('User not found');
+    }
+
+    const userData = userDoc.data();
+
+    // 4. Deduce target plan and limits based on pricing (20$ vs 80$)
+    let planId = 'member';
+    let limit = 100;
+    let priceAmount = 20;
+
+    const amountInCents = req.body?.obj?.amount_cents || 2000;
+    const planName = req.body?.obj?.order?.items?.[0]?.name || '';
+
+    if (amountInCents >= 7500 || planName.includes('احترافية') || planName.includes('premium') || planName.includes('gold')) {
+      planId = 'premium';
+      limit = 500;
+      priceAmount = 80;
+    }
+
+    const nowStr = new Date().toISOString();
+    const renewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // 5. Update User Document inside Firestore Atomically
+    await db.collection('users').doc(userId).set({
+      planId,
+      subscriptionStatus: 'active',
+      dailyLimit: limit,
+      remainingToday: limit,
+      renewalDate,
+      updatedAt: nowStr
+    }, { merge: true });
+
+    // Update in-memory user plans cache
+    userPlans.set(`uid:${userId}`, planId);
+
+    // 6. Record Subscription History Record
+    const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    await db.collection('subscriptions').doc(subscriptionId).set({
+      subscriptionId,
+      uid: userId,
+      planId,
+      status: 'active',
+      startDate: nowStr,
+      endDate: renewalDate,
+      renewalDate,
+      paymentProvider: 'paymob',
+      paymentReference: transactionId || `paymob_${Date.now()}`,
+      autoRenew: true
+    });
+
+    // 7. Record Payment History Record
+    const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    await db.collection('payments').doc(paymentId).set({
+      paymentId,
+      uid: userId,
+      subscriptionId,
+      amount: priceAmount,
+      currency: 'USD',
+      provider: 'paymob',
+      status: 'success',
+      transactionId: transactionId || paymentId,
+      createdAt: nowStr
+    });
+
+    // 8. Record Detailed Dev Log inside the Admin Panel
+    const planLabel = planId === 'premium' ? 'الخطة الاحترافية' : 'الخطة المتوسطة';
+    addDevLog(
+      'paymob_webhook',
+      JSON.stringify(req.body),
+      `تم تفعيل اشتراك جديد بنجاح! تم ترقية المستخدم ${userData?.email || userData?.displayName || userId} إلى ${planLabel} (الحد اليومي الجديد: ${limit} استخدام، تاريخ التجديد القادم: ${renewalDate}). رقم المعاملة: ${transactionId}`
+    );
+
     res.json({ received: true });
   } catch (err: any) {
     console.error(`[Payment Webhook Handler] Error processing event:`, err);
@@ -955,15 +896,18 @@ app.post('/api/payment/webhook', async (req: any, res) => {
 });
 
 // Developer logs endpoint
-app.get('/api/dev-logs', (req, res) => {
+app.get('/api/dev-logs', requireAuth, (req: any, res) => {
+  if (!isUserAdmin(req)) {
+    return res.status(403).json({ error: 'عذراً، هذا الإجراء متاح فقط لمدير النظام.' });
+  }
   res.json(devLogs);
 });
 
 // Admin stats endpoint
-app.get('/api/admin/stats', async (req: any, res) => {
+app.get('/api/admin/stats', requireAuth, async (req: any, res) => {
   try {
     // Check Authorization
-    if (!req.user || !req.user.email || !ADMIN_EMAILS.includes(req.user.email)) {
+    if (!isUserAdmin(req)) {
       return res.status(403).json({ error: 'عذراً، غير مصرح لك بالوصول إلى هذه البيانات الإدارية الحساسة.' });
     }
 
@@ -1128,10 +1072,10 @@ app.get('/api/admin/stats', async (req: any, res) => {
 });
 
 // Admin Subscriptions Stats Endpoint
-app.get('/api/admin/subscription-stats', async (req: any, res) => {
+app.get('/api/admin/subscription-stats', requireAuth, async (req: any, res) => {
   try {
     // Check Authorization
-    if (!req.user || !req.user.email || !ADMIN_EMAILS.includes(req.user.email)) {
+    if (!isUserAdmin(req)) {
       return res.status(403).json({ error: 'عذراً، غير مصرح لك بالوصول إلى هذه البيانات الإدارية الحساسة.' });
     }
 
@@ -1211,7 +1155,7 @@ app.get('/api/admin/subscription-stats', async (req: any, res) => {
 });
 
 // Poem generation endpoint
-app.post('/api/generate-poem', async (req: any, res) => {
+app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
   try {
     const isAdmin = isUserAdmin(req);
 
@@ -1220,17 +1164,6 @@ app.post('/api/generate-poem', async (req: any, res) => {
       trackTelemetry(req, 'reject_global');
       return res.status(429).json({
         error: 'لقد تم الوصول إلى الحد الأقصى للاستخدام العالمي اليوم لهذا النظام (2000 استخدام). يرجى المحاولة غداً أو التواصل مع الإدارة.',
-        remainingDailyUses: 0
-      });
-    }
-
-    const maxLimit = getMaxDailyUses(req);
-    const key = getLocalLimitKey(req);
-    const currentCount = localDailyLimits.get(key) || 0;
-    if (!isAdmin && currentCount >= maxLimit) {
-      trackTelemetry(req, 'reject_daily');
-      return res.status(429).json({
-        error: `لقد وصلت إلى الحد اليومي المسموح به (${maxLimit} استخدامات يومياً). يرجى المحاولة غداً.`,
         remainingDailyUses: 0
       });
     }
@@ -1245,6 +1178,16 @@ app.post('/api/generate-poem', async (req: any, res) => {
       });
     }
 
+    // Call checkAndConsumeUsage before AI generation
+    const usageCheck = await checkAndConsumeUsage(req);
+    if (!usageCheck.allowed) {
+      trackTelemetry(req, 'reject_daily');
+      return res.status(429).json({
+        error: `لقد وصلت إلى الحد اليومي المسموح به (${usageCheck.maxLimit} استخدامات يومياً). يرجى المحاولة غداً.`,
+        remainingDailyUses: 0
+      });
+    }
+
     const aiInstance = getAiClient();
     const startGemini = Date.now();
     const result = await handleGeneratePoem(req.body, aiInstance);
@@ -1253,14 +1196,9 @@ app.post('/api/generate-poem', async (req: any, res) => {
     // Track successful poem generation
     trackTelemetry(req, 'success_poem', { duration });
 
-    // Increase limit count for normal users only
-    if (!isAdmin) {
-      localDailyLimits.set(key, currentCount + 1);
-    }
-
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) }
-      : { result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) };
+      ? { ...result, remainingDailyUses: usageCheck.remainingDailyUses }
+      : { result, remainingDailyUses: usageCheck.remainingDailyUses };
 
     return res.json(responseData);
   } catch (err: any) {
@@ -1276,7 +1214,7 @@ app.post('/api/generate-poem', async (req: any, res) => {
 });
 
 // Literary tools endpoint
-app.post('/api/literary-tool', async (req: any, res) => {
+app.post('/api/literary-tool', requireAuth, async (req: any, res) => {
   try {
     const isAdmin = isUserAdmin(req);
 
@@ -1285,17 +1223,6 @@ app.post('/api/literary-tool', async (req: any, res) => {
       trackTelemetry(req, 'reject_global');
       return res.status(429).json({
         error: 'لقد تم الوصول إلى الحد الأقصى للاستخدام العالمي اليوم لهذا النظام (2000 استخدام). يرجى المحاولة غداً أو التواصل مع الإدارة.',
-        remainingDailyUses: 0
-      });
-    }
-
-    const maxLimit = getMaxDailyUses(req);
-    const key = getLocalLimitKey(req);
-    const currentCount = localDailyLimits.get(key) || 0;
-    if (!isAdmin && currentCount >= maxLimit) {
-      trackTelemetry(req, 'reject_daily');
-      return res.status(429).json({
-        error: `لقد وصلت إلى الحد اليومي المسموح به (${maxLimit} استخدامات يومياً). يرجى المحاولة غداً.`,
         remainingDailyUses: 0
       });
     }
@@ -1314,6 +1241,16 @@ app.post('/api/literary-tool', async (req: any, res) => {
       });
     }
 
+    // Call checkAndConsumeUsage before AI generation
+    const usageCheck = await checkAndConsumeUsage(req);
+    if (!usageCheck.allowed) {
+      trackTelemetry(req, 'reject_daily');
+      return res.status(429).json({
+        error: `لقد وصلت إلى الحد اليومي المسموح به (${usageCheck.maxLimit} استخدامات يومياً). يرجى المحاولة غداً.`,
+        remainingDailyUses: 0
+      });
+    }
+
     const aiInstance = getAiClient();
     const startGemini = Date.now();
     const result = await handleLiteraryTool(toolAction, payload, aiInstance);
@@ -1322,14 +1259,9 @@ app.post('/api/literary-tool', async (req: any, res) => {
     // Track successful tool execution
     trackTelemetry(req, 'success_tool', { duration, toolAction });
 
-    // Increase limit count for normal users only
-    if (!isAdmin) {
-      localDailyLimits.set(key, currentCount + 1);
-    }
-
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) }
-      : { result, remainingDailyUses: isAdmin ? 99999 : Math.max(0, maxLimit - (currentCount + 1)) };
+      ? { ...result, remainingDailyUses: usageCheck.remainingDailyUses }
+      : { result, remainingDailyUses: usageCheck.remainingDailyUses };
 
     return res.json(responseData);
   } catch (err: any) {
@@ -1496,8 +1428,8 @@ app.put('/api/diwan/:id/favorite', async (req: any, res) => {
 });
 
 // 6. Admin Overview of All Saved Poems
-app.get('/api/admin/all-diwans', async (req: any, res) => {
-  if (!req.user || !req.user.email || !ADMIN_EMAILS.includes(req.user.email)) {
+app.get('/api/admin/all-diwans', requireAuth, async (req: any, res) => {
+  if (!isUserAdmin(req)) {
     return res.status(403).json({ error: 'عذراً، هذا الإجراء متاح فقط لمدير النظام.' });
   }
   try {
@@ -1537,7 +1469,13 @@ async function setupFrontend() {
 }
 
 // Start local development server
-setupFrontend().then(() => {
+setupFrontend().then(async () => {
+  try {
+    console.log('[Startup] Seeding database plans...');
+    await PlansService.seedPlans();
+  } catch (err) {
+    console.error('[Startup] Failed to seed plans:', err);
+  }
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
