@@ -105,6 +105,68 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
       if (!res.ok || data.error) throw new Error(data.error || 'فشل تطبيق الصناعة التراثية المحددة.');
 
       setResult(data);
+
+      // Auto-save if registered
+      if (isRegisteredUser) {
+        const versesFlattened: any[] = [];
+        let verseIndex = 1;
+
+        const stanzas = data.stanzas || [];
+        stanzas.forEach((stanza: any) => {
+          if (industryType === 'tashteer') {
+            versesFlattened.push({
+              shatr1: `[مضاف] ${stanza.addedSadr || ''}`,
+              shatr2: `[أصل] ${stanza.originalSadr}`,
+              index: verseIndex++
+            });
+            versesFlattened.push({
+              shatr1: `[مضاف] ${stanza.addedAjuz || ''}`,
+              shatr2: `[أصل] ${stanza.originalAjuz}`,
+              index: verseIndex++
+            });
+          } else {
+            const allAdded = stanza.added || [];
+            for (let i = 0; i < allAdded.length; i += 2) {
+              if (i + 1 < allAdded.length) {
+                versesFlattened.push({
+                  shatr1: `[مضاف] ${allAdded[i]}`,
+                  shatr2: `[مضاف] ${allAdded[i+1]}`,
+                  index: verseIndex++
+                });
+              } else {
+                versesFlattened.push({
+                  shatr1: `[مضاف] ${allAdded[i]}`,
+                  shatr2: '❋',
+                  index: verseIndex++
+                });
+              }
+            }
+            versesFlattened.push({
+              shatr1: `[أصل] ${stanza.originalSadr}`,
+              shatr2: `[أصل] ${stanza.originalAjuz}`,
+              index: verseIndex++
+            });
+          }
+        });
+
+        const formattedPoem: GeneratedPoem = {
+          id: Math.random().toString(36).substring(2, 11),
+          title: `${industryType === 'takhmees' ? 'تخميس' : industryType === 'tasbeeq' ? 'تسبيع' : 'تشطير'} لقصيدة من بحر ${data.meterName}`,
+          verses: versesFlattened,
+          meterName: data.meterName,
+          feet: `صناعة شعرية تراثية (${industryType === 'takhmees' ? 'تخميس' : industryType === 'tasbeeq' ? 'تسبيع' : 'تشطير'})`,
+          rhymeLetter: data.rhymeLetter,
+          purpose: `${industryType === 'takhmees' ? 'تخميس' : industryType === 'tasbeeq' ? 'تسبيع' : 'تشطير'} تراثي`,
+          isOpposition: false,
+          explanation: data.explanation,
+          weightSafetyPercentage: data.weightSafetyPercentage,
+          rhymeSafetyPercentage: data.rhymeSafetyPercentage,
+          createdAt: new Date().toISOString()
+        };
+
+        onSavePoemToHistory(formattedPoem);
+        setSavedToArchive(true);
+      }
     } catch (err: any) {
       setError(err.message || 'فشل تطبيق الصناعة التراثية المحددة. يرجى مراجعة صياغة الأبيات والمحاولة ثانية.');
     } finally {

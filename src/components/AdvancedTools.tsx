@@ -8,6 +8,7 @@ interface AdvancedToolsProps {
   meters: PoeticMeterInfo[];
   currentPoem: any;
   onApplyNewPoem: (poem: any) => void;
+  onSavePoemToHistory?: (poem: any) => void;
   turnstileSiteKey: string;
   isDarkMode: boolean;
   onUpdateRemainingUses?: (uses: number) => void;
@@ -15,7 +16,7 @@ interface AdvancedToolsProps {
   isRegisteredUser?: boolean;
 }
 
-export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, turnstileSiteKey, isDarkMode, onUpdateRemainingUses, remainingDailyUses, isRegisteredUser }: AdvancedToolsProps) {
+export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemToHistory, turnstileSiteKey, isDarkMode, onUpdateRemainingUses, remainingDailyUses, isRegisteredUser }: AdvancedToolsProps) {
   const [activeSubTool, setActiveSubTool] = useState<'rhymes' | 'prose2poem' | 'transmute' | 'rhymeChanger' | 'critique' | 'comparison' | 'analyzeProsody' | 'styleTransform' | 'originality' | 'inspiration' | 'rhetorical'>('rhymes');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,13 +114,77 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, turnstileSi
       if (!response.ok || data.error) throw new Error(data.error || 'حدث خطأ أثناء معالجة الأداة الأدبية.');
 
       if (action === 'generate-rhymes') setRhymeResults(data);
-      else if (action === 'prose-to-poem') setProseResult(data);
-      else if (action === 'transmute-meter') setTransmuteResult(data);
-      else if (action === 'change-rhyme') setRhymeChangeResult(data);
+      else if (action === 'prose-to-poem') {
+        setProseResult(data);
+        if (isRegisteredUser && onSavePoemToHistory) {
+          onSavePoemToHistory({
+            id: Math.random().toString(36).substring(2, 11),
+            title: data.title || 'قصيدة من نثر',
+            verses: data.verses || [],
+            meterName: proseMeter,
+            feet: `صناعة نثرية`,
+            rhymeLetter: proseRhyme || 'تلقائية',
+            purpose: proseGenre,
+            explanation: data.explanation,
+            createdAt: new Date().toISOString(),
+            toolType: 'prose-to-poem'
+          });
+        }
+      }
+      else if (action === 'transmute-meter') {
+        setTransmuteResult(data);
+        if (isRegisteredUser && onSavePoemToHistory) {
+          onSavePoemToHistory({
+            id: Math.random().toString(36).substring(2, 11),
+            title: data.title || 'قصيدة محولة البحر',
+            verses: data.verses || [],
+            meterName: transmuteTarget,
+            feet: `بحر محول إلى ${transmuteTarget}`,
+            rhymeLetter: transmuteRhyme || 'تلقائية',
+            purpose: currentPoem?.purpose || 'تحويل بحر',
+            explanation: data.explanation,
+            createdAt: new Date().toISOString(),
+            toolType: 'transmute-meter'
+          });
+        }
+      }
+      else if (action === 'change-rhyme') {
+        setRhymeChangeResult(data);
+        if (isRegisteredUser && onSavePoemToHistory) {
+          onSavePoemToHistory({
+            id: Math.random().toString(36).substring(2, 11),
+            title: data.title || 'قصيدة معدلة القافية',
+            verses: data.verses || [],
+            meterName: currentPoem?.meterName || 'تلقائي',
+            feet: currentPoem?.feet || '',
+            rhymeLetter: targetRhymeLetter,
+            purpose: currentPoem?.purpose || 'تعديل قافية',
+            explanation: data.explanation,
+            createdAt: new Date().toISOString(),
+            toolType: 'change-rhyme'
+          });
+        }
+      }
       else if (action === 'analyze-style') setAnalyzerResult(data);
       else if (action === 'compare-poems') setCompareResult(data);
       else if (action === 'analyze-prosody') setProsodyResult(data);
-      else if (action === 'style-analyze-transform') setTransformResult(data);
+      else if (action === 'style-analyze-transform') {
+        setTransformResult(data);
+        if (isRegisteredUser && onSavePoemToHistory) {
+          onSavePoemToHistory({
+            id: Math.random().toString(36).substring(2, 11),
+            title: data.transformedTitle || 'قصيدة محولة أسلوبياً',
+            verses: data.transformedVerses || [],
+            meterName: currentPoem?.meterName || 'تلقائي',
+            feet: currentPoem?.feet || '',
+            rhymeLetter: currentPoem?.rhymeLetter || 'تلقائي',
+            purpose: currentPoem?.purpose || 'تحوير أسلوبي',
+            explanation: data.comparisonExplanation,
+            createdAt: new Date().toISOString(),
+            toolType: 'style-transform'
+          });
+        }
+      }
       else if (action === 'originality-analyze') setOriginalityResult(data);
       else if (action === 'inspiration-generate') setInspirationResult(data);
       else if (action === 'rhetorical-analyze') setRhetoricalResult(data);

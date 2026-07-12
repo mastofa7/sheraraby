@@ -1383,11 +1383,15 @@ app.post('/api/diwan/clear', async (req: any, res) => {
       const snapshot = await db.collection('poems')
         .where('userId', '==', req.user.uid)
         .get();
-      const batch = db.batch();
+      
+      const docsToDelete: string[] = [];
       snapshot.forEach((doc: any) => {
-        batch.delete(doc.ref);
+        docsToDelete.push(doc.id);
       });
-      await batch.commit();
+
+      for (const docId of docsToDelete) {
+        await db.collection('poems').doc(docId).delete().catch(() => {});
+      }
       return res.json({ success: true });
     } else {
       return res.status(503).json({ error: 'خدمة قاعدة البيانات غير متوفرة.' });

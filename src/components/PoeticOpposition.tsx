@@ -184,6 +184,31 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
       };
 
       setOpposedPoem(poemWithId);
+
+      // Auto-save if registered
+      if (isRegisteredUser) {
+        const formattedPoem: GeneratedPoem = {
+          id: poemWithId.id,
+          title: poemWithId.title,
+          verses: poemWithId.verses.map((v: any) => ({
+            shatr1: v.shatr1,
+            shatr2: v.shatr2,
+            index: v.index
+          })),
+          meterName: poemWithId.meterName,
+          feet: data.feet || analysisResult?.feet || 'تفعيلات البحر المكتشف',
+          rhymeLetter: poemWithId.rhymeLetter,
+          purpose: `${analysisResult?.purpose || 'معارضة'} (معارضة شعرية)`,
+          poetSimulated: poemWithId.poetSimulated,
+          isOpposition: true,
+          explanation: poemWithId.explanation,
+          weightSafetyPercentage: poemWithId.weightSafetyPercentage,
+          rhymeSafetyPercentage: poemWithId.rhymeSafetyPercentage,
+          createdAt: new Date().toISOString()
+        };
+        onSavePoemToHistory(formattedPoem);
+        setSavedToArchive(true);
+      }
     } catch (err: any) {
       setGenerationError(err.message || 'فشل توليد المعارضة الشعرية. يرجى المحاولة لاحقاً.');
     } finally {

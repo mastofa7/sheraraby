@@ -422,10 +422,33 @@ export default function App() {
     }
     try {
       const res = await apiFetch('/api/diwan');
+      let cloudPoems: GeneratedPoem[] = [];
       if (res.ok) {
-        const data = await res.json();
-        setHistory(data);
+        cloudPoems = await res.json();
       }
+
+      // If we have any existing poems in local state that are not in the cloud yet, migrate them!
+      if (history && history.length > 0) {
+        let migratedAny = false;
+        for (const localPoem of history) {
+          if (localPoem && localPoem.id && !cloudPoems.some(p => p.id === localPoem.id)) {
+            migratedAny = true;
+            await apiFetch('/api/diwan', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(localPoem)
+            }).catch(e => console.error('Migration failed for poem:', localPoem.id, e));
+          }
+        }
+        if (migratedAny) {
+          const finalRes = await apiFetch('/api/diwan');
+          if (finalRes.ok) {
+            cloudPoems = await finalRes.json();
+          }
+        }
+      }
+
+      setHistory(cloudPoems);
     } catch (err) {
       console.error('Failed to fetch user diwan:', err);
     }
@@ -441,6 +464,20 @@ export default function App() {
       return;
     }
     setHistory(updatedHistory);
+  };
+
+  const savePoemToCloudAndRefresh = async (poem: GeneratedPoem) => {
+    if (!user) return;
+    try {
+      await apiFetch('/api/diwan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(poem)
+      });
+      fetchDiwanFromBackend();
+    } catch (err) {
+      console.error('Failed to save generated poem to cloud:', err);
+    }
   };
 
   const handleToggleFavorite = async (id: string, e: React.MouseEvent) => {
@@ -618,16 +655,7 @@ export default function App() {
       
       // Save to history on secure backend
       if (user) {
-        try {
-          await apiFetch('/api/diwan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newPoem)
-          });
-          fetchDiwanFromBackend();
-        } catch (err) {
-          console.error('Failed to save generated poem to server:', err);
-        }
+        savePoemToCloudAndRefresh(newPoem);
       }
 
       // Scroll smoothly to results
@@ -1821,9 +1849,13 @@ export default function App() {
               isDarkMode={isDarkMode}
               turnstileSiteKey={turnstileSiteKey}
               onSavePoemToHistory={(poem) => {
-                const updated = [poem, ...history];
-                setHistory(updated);
-                saveHistoryToStorage(updated);
+                if (user) {
+                  savePoemToCloudAndRefresh(poem);
+                } else {
+                  const updated = [poem, ...history];
+                  setHistory(updated);
+                  saveHistoryToStorage(updated);
+                }
               }}
               onUpdateRemainingUses={setRemainingDailyUses}
               remainingDailyUses={remainingDailyUses}
@@ -1838,9 +1870,13 @@ export default function App() {
               isDarkMode={isDarkMode}
               turnstileSiteKey={turnstileSiteKey}
               onSavePoemToHistory={(poem) => {
-                const updated = [poem, ...history];
-                setHistory(updated);
-                saveHistoryToStorage(updated);
+                if (user) {
+                  savePoemToCloudAndRefresh(poem);
+                } else {
+                  const updated = [poem, ...history];
+                  setHistory(updated);
+                  saveHistoryToStorage(updated);
+                }
               }}
               onUpdateRemainingUses={setRemainingDailyUses}
               remainingDailyUses={remainingDailyUses}
@@ -1859,12 +1895,23 @@ export default function App() {
               onUpdateRemainingUses={setRemainingDailyUses}
               remainingDailyUses={remainingDailyUses}
               isRegisteredUser={!!user}
+              onSavePoemToHistory={(poem) => {
+                if (user) {
+                  savePoemToCloudAndRefresh(poem);
+                }
+              }}
               onApplyNewPoem={(poem) => {
                 setCurrentPoem(poem);
-                if (poem && !history.some(p => p.id === poem.id)) {
-                  const updated = [poem, ...history];
-                  setHistory(updated);
-                  saveHistoryToStorage(updated);
+                if (poem) {
+                  if (user) {
+                    savePoemToCloudAndRefresh(poem);
+                  } else {
+                    if (!history.some(p => p.id === poem.id)) {
+                      const updated = [poem, ...history];
+                      setHistory(updated);
+                      saveHistoryToStorage(updated);
+                    }
+                  }
                 }
                 setActiveMainTab('studio');
                 setTimeout(() => {

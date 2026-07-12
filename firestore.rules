@@ -1,8 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if user is the admin
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'mw9392000@gmail.com' ||
+        request.auth.uid == 'mw9392000'
+      );
+    }
+
+    // Helper: Check if resource belongs to owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      allow read, write: if isAdmin() || isOwner(userId);
+    }
+
+    // 2. Poems collection
+    match /poems/{poemId} {
+      // Create: requires auth and matching userId in the document data
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      
+      // Read/Update/Delete: requires being the admin or the owner of the poem
+      allow read, update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    // 3. Usage Logs collection
+    match /usage_logs/{logId} {
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+    
+    // Default fallback: block everything else
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
   }
 }

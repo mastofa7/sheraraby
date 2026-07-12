@@ -278,6 +278,10 @@ class RestDoc {
     return setRestDocument(this.config, this.collectionName, this.docId, data, options);
   }
 
+  async update(data: any) {
+    return this.set(data, { merge: true });
+  }
+
   async delete() {
     return deleteRestDocument(this.config, this.collectionName, this.docId);
   }
