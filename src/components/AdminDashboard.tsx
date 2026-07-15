@@ -57,18 +57,22 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'server' | 'subscriptions' | 'diwans'>('server');
-  const [subStats, setSubStats] = useState<any>(null);
-  const [loadingSub, setLoadingSub] = useState<boolean>(false);
-  const [errorSub, setErrorSub] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [planFilter, setPlanFilter] = useState<string>('all');
-
+  const [activeTab, setActiveTab] = useState<'server' | 'diwans'>('server');
   const [allDiwans, setAllDiwans] = useState<any[]>([]);
   const [loadingDiwans, setLoadingDiwans] = useState<boolean>(false);
   const [errorDiwans, setErrorDiwans] = useState<string | null>(null);
   const [diwanSearch, setDiwanSearch] = useState<string>('');
   const [selectedAdminPoem, setSelectedAdminPoem] = useState<any | null>(null);
+
+  // Deprecated Subscription states to satisfy compiler on removed tab
+  const loadingSub = false;
+  const errorSub = null;
+  const fetchSubStats = () => {};
+  const subStats: any = null;
+  const searchTerm = '';
+  const setSearchTerm = (val: string) => {};
+  const planFilter = 'all';
+  const setPlanFilter = (val: string) => {};
 
   const fetchAllDiwans = async () => {
     setLoadingDiwans(true);
@@ -89,33 +93,12 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
     }
   };
 
-  const fetchSubStats = async () => {
-    setLoadingSub(true);
-    setErrorSub(null);
-    try {
-      const res = await apiFetch('/api/admin/subscription-stats');
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'فشل تحميل بيانات الاشتراكات من الخادم.');
-      }
-      const data = await res.json();
-      setSubStats(data);
-    } catch (err: any) {
-      console.error(err);
-      setErrorSub(err.message || 'حدث خطأ فني أثناء تحميل بيانات الاشتراكات.');
-    } finally {
-      setLoadingSub(false);
-    }
-  };
-
   useEffect(() => {
     fetchStats();
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'subscriptions') {
-      fetchSubStats();
-    } else if (activeTab === 'diwans') {
+    if (activeTab === 'diwans') {
       fetchAllDiwans();
     }
   }, [activeTab]);
@@ -246,16 +229,6 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
           }`}
         >
           ⚙️ إحصائيات النظام والاستخدام
-        </button>
-        <button
-          onClick={() => setActiveTab('subscriptions')}
-          className={`px-5 py-3 text-sm font-serif font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === 'subscriptions'
-              ? (isDarkMode ? 'border-[#dfba6b] text-[#dfba6b]' : 'border-[#1a472a] text-[#1a472a]')
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          💳 لوحة إدارة الاشتراكات والمدفوعات
         </button>
         <button
           onClick={() => setActiveTab('diwans')}
@@ -811,7 +784,7 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </>
       )}
 
-      {activeTab === 'subscriptions' && (
+      {false && (
         <div className="space-y-6">
           {loadingSub ? (
             <div className="p-12 text-center flex flex-col items-center justify-center gap-4">

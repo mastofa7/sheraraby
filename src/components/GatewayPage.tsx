@@ -36,17 +36,7 @@ export default function GatewayPage({
   // Format Plan Names
   const getPlanLabel = () => {
     if (isUserAdmin) return 'المالك والمدير (كامل الصلاحيات)';
-    switch (userPlanId) {
-      case 'gold':
-      case 'premium':
-        return 'الخطة الاحترافية (Premium)';
-      case 'silver':
-      case 'member':
-        return 'الخطة المتوسطة (Member)';
-      case 'free':
-      default:
-        return 'الخطة المجانية (Free)';
-    }
+    return 'الخطة المجانية (Free)';
   };
 
   // Format limits

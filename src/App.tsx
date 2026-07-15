@@ -39,7 +39,6 @@ import PoeticIndustries from './components/PoeticIndustries';
 import PoemRevisionWorkspace from './components/PoemRevisionWorkspace';
 import { PoetAnalytics } from './components/PoetAnalytics';
 import AdminDashboard from './components/AdminDashboard';
-import SubscriptionPlans from './components/SubscriptionPlans';
 import { METERS_DATA } from './metersData';
 import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 import TurnstileWidget from './components/TurnstileWidget';
@@ -110,6 +109,40 @@ export default function App() {
 
   // نظام تسجيل الدخول الاحترافي
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+
+  // Catch internal Firebase assertion failures or uncaught popup blocker issues globally
+  useEffect(() => {
+    const handleGlobalError = (event: ErrorEvent) => {
+      const msg = event.message || '';
+      if (msg.includes('Pending promise') || msg.includes('INTERNAL ASSERTION FAILED')) {
+        console.warn('Caught internal Firebase auth assertion globally:', msg);
+        setPopupClosedError(true);
+        setIsSigningIn(false);
+        setError('تعذر إكمال عملية تسجيل الدخول بسبب قيود النوافذ المنبثقة في المتصفح. يرجى مراجعة الحلول المقترحة بالأسفل.');
+        event.preventDefault();
+      }
+    };
+
+    const handleGlobalRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const msg = reason ? (reason.message || String(reason)) : '';
+      if (msg.includes('Pending promise') || msg.includes('INTERNAL ASSERTION FAILED')) {
+        console.warn('Caught internal Firebase auth rejection globally:', msg);
+        setPopupClosedError(true);
+        setIsSigningIn(false);
+        setError('تعذر إكمال عملية تسجيل الدخول بسبب قيود النوافذ المنبثقة في المتصفح. يرجى مراجعة الحلول المقترحة بالأسفل.');
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handleGlobalRejection);
+    return () => {
+      window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('unhandledrejection', handleGlobalRejection);
+    };
+  }, []);
 
   // Cloudflare Turnstile States
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>('');
@@ -143,6 +176,8 @@ export default function App() {
   }, []);
 
   const handleSignInWithGoogle = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
     try {
       setError(null);
       setUnauthorizedDomainError(null);
@@ -158,7 +193,19 @@ export default function App() {
       );
       if (isUnauthorized) {
         setUnauthorizedDomainError(window.location.hostname);
-      } else if (err && (err.code === 'auth/popup-closed-by-user' || String(err).includes('popup-closed-by-user') || String(err.message).includes('popup-closed-by-user'))) {
+      } else if (err && (
+        err.code === 'auth/popup-closed-by-user' || 
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'auth/popup-blocked' ||
+        String(err).includes('popup-closed-by-user') || 
+        String(err.message).includes('popup-closed-by-user') ||
+        String(err).includes('popup-blocked') ||
+        String(err.message).includes('popup-blocked') ||
+        String(err).includes('cancelled-popup-request') ||
+        String(err.message).includes('cancelled-popup-request') ||
+        String(err).includes('Pending promise') ||
+        String(err.message).includes('Pending promise')
+      )) {
         setPopupClosedError(true);
         setError(
           'تم إغلاق نافذة تسجيل الدخول من قِبل المتصفح أو المستخدم. يرجى السماح بالنوافذ المنبثقة (Popups) وإعادة المحاولة، أو يمكنك فتح التطبيق في علامة تبويب جديدة لتسجيل الدخول بسلاسة.'
@@ -166,10 +213,14 @@ export default function App() {
       } else {
         setError(err.message || 'حدث خطأ أثناء تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.');
       }
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
   const handleSignInAnonymously = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
     try {
       setError(null);
       setUnauthorizedDomainError(null);
@@ -179,6 +230,8 @@ export default function App() {
     } catch (err: any) {
       console.error('Anonymous login error:', err);
       setError(err.message || 'حدث خطأ أثناء الدخول السريع كشاعر ضيف. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -198,16 +251,6 @@ export default function App() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        // Sync plan backup from local storage if existing on reload/mount
-        const savedBackup = localStorage.getItem('user_subscription_plan_backup');
-        if (savedBackup) {
-          await apiFetch('/api/user/plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan: savedBackup })
-          }).catch(() => {});
-        }
-
         const res = await apiFetch('/api/config');
         if (res.ok) {
           const data = await res.json();
@@ -232,70 +275,10 @@ export default function App() {
           setUserRole('user');
         }
       } catch (e) {
-        console.error('Failed to load Turnstile sitekey:', e);
+        console.error('Failed to load config:', e);
       }
     };
     fetchConfig();
-  }, [user]);
-
-  // Listen for Paymob redirect query parameters (success or cancel)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get('session_id');
-    const paymentStatus = params.get('payment');
-
-    if (sessionId && paymentStatus === 'success') {
-      const verifyPaymentSession = async () => {
-        setPaymentVerifying(true);
-        setError(null);
-        try {
-          const res = await apiFetch(`/api/payment/verify-session?session_id=${sessionId}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success) {
-              setPaymentSuccessMessage(data.message || 'تم تفعيل اشتراكك وتحديث خطتك بنجاح عبر Paymob!');
-              setUserPlanId(data.planId);
-              // Store backup in localStorage
-              localStorage.setItem('user_subscription_plan_backup', data.planId);
-              
-              // Clear URL query parameters so refresh is clean
-              const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-              window.history.replaceState({ path: newUrl }, '', newUrl);
-              
-              // Trigger config refresh to update limit displays
-              const configRes = await apiFetch('/api/config');
-              if (configRes.ok) {
-                const configData = await configRes.json();
-                if (typeof configData.remainingDailyUses === 'number') {
-                  setRemainingDailyUses(configData.remainingDailyUses);
-                }
-                if (typeof configData.maxLimit === 'number') {
-                  setUserPlanLimit(configData.maxLimit);
-                }
-              }
-            } else {
-              setError(data.message || 'فشل التحقق من الدفع، يرجى الاتصال بالدعم.');
-            }
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            setError(errData.error || 'فشل التحقق من جلسة دفع Paymob.');
-          }
-        } catch (err: any) {
-          console.error('Error verifying Paymob session:', err);
-          setError('حدث خطأ فني أثناء التحقق من اشتراكك.');
-        } finally {
-          setPaymentVerifying(false);
-        }
-      };
-
-      if (user) {
-        verifyPaymentSession();
-      }
-    } else if (paymentStatus === 'cancel') {
-      setError('تم إلغاء عملية الدفع والاشتراك. يمكنك المحاولة مجدداً في أي وقت.');
-      const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-      window.history.replaceState({ path: newUrl }, '', newUrl);
-    }
   }, [user]);
 
   useEffect(() => {
@@ -731,10 +714,12 @@ export default function App() {
     return (
       <WelcomePage
         onSignInWithGoogle={handleSignInWithGoogle}
+        onSignInAnonymously={handleSignInAnonymously}
         isDarkMode={isDarkMode}
         unauthorizedDomainError={unauthorizedDomainError}
         popupClosedError={popupClosedError}
         error={error}
+        isSigningIn={isSigningIn}
       />
     );
   }
@@ -945,19 +930,7 @@ export default function App() {
             تحليلات الشاعر البيانية
           </button>
 
-          {user && (
-            <button
-              onClick={() => setActiveMainTab('subscriptions')}
-              className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                activeMainTab === 'subscriptions'
-                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                  : 'text-amber-400 border border-amber-500/30 hover:bg-amber-500/10'
-              }`}
-            >
-              <Crown className="w-3.5 h-3.5" />
-              الاشتراكات
-            </button>
-          )}
+
 
           {user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
             <button
@@ -1982,16 +1955,7 @@ export default function App() {
           </div>
         )}
 
-        {activeMainTab === 'subscriptions' && (
-          <div className="animate-fade-in">
-            <SubscriptionPlans 
-              isDarkMode={isDarkMode} 
-              user={user}
-              onUpdateRemainingUses={(uses) => setRemainingDailyUses(uses)}
-              onUpdateUserPlanId={(id) => setUserPlanId(id)}
-            />
-          </div>
-        )}
+
 
         {activeMainTab === 'admin' && user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
           <div className="animate-fade-in">

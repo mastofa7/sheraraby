@@ -12,19 +12,14 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { PaymentManager } from './server/payment';
+import { UsersService } from './server/services/usersService';
+import { UsageLogsService } from './server/services/usageLogsService';
 import { 
   handleGeneratePoem, 
   handleLiteraryTool, 
   devLogs, 
   addDevLog 
 } from './src/backend-logic';
-
-import { UsersService } from './server/services/usersService';
-import { SubscriptionsService } from './server/services/subscriptionsService';
-import { PaymentsService } from './server/services/paymentsService';
-import { PlansService } from './server/services/plansService';
-import { UsageLogsService } from './server/services/usageLogsService';
 
 import { db, isFirebaseAdminInitialized } from './server/db';
 
@@ -294,34 +289,6 @@ export const SUBSCRIPTION_PLANS = {
     price: '0 دولار',
     limit: 10,
     features: ['تحليل عروض وبحور الشعر', 'تكملة القوافي والبحور المتقاطعة', 'حفظ القصائد بالأرشيف', '١٠ استخدامات يومية كحد أقصى']
-  },
-  member: {
-    id: 'member',
-    name: 'الخطة المتوسطة',
-    price: '20 دولار شهرياً',
-    limit: 100,
-    features: ['جميع مميزات الخطة المجانية', 'أولوية معالجة فائقة السرعة', 'أداة المعارضة الشعرية المتقدمة', 'المحسنات البديعية والبلاغية كاملة', '١٠٠ استخدام يومياً متاحاً']
-  },
-  premium: {
-    id: 'premium',
-    name: 'الخطة الاحترافية',
-    price: '80 دولار شهرياً',
-    limit: 500,
-    features: ['جميع ميزات المنصة والذكاء الاصطناعي بلا قيود', 'أقصى سرعة استجابة فائقة من Gemini', 'استشارات ومقترحات شعرية متقدمة ودقيقة', 'دعم فني خاص على مدار الساعة', '٥٠٠ استخدام يومي متاح']
-  },
-  silver: {
-    id: 'member',
-    name: 'الخطة المتوسطة',
-    price: '20 دولار شهرياً',
-    limit: 100,
-    features: ['جميع مميزات الخطة المجانية', 'أولوية معالجة فائقة السرعة', 'أداة المعارضة الشعرية المتقدمة', 'المحسنات البديعية والبلاغية كاملة', '١٠٠ استخدام يومياً متاحاً']
-  },
-  gold: {
-    id: 'premium',
-    name: 'الخطة الاحترافية',
-    price: '80 دولار شهرياً',
-    limit: 500,
-    features: ['جميع ميزات المنصة والذكاء الاصطناعي بلا قيود', 'أقصى سرعة استجابة فائقة من Gemini', 'استشارات ومقترحات شعرية متقدمة ودقيقة', 'دعم فني خاص على مدار الساعة', '٥٠٠ استخدام يومي متاح']
   }
 };
 
@@ -332,11 +299,9 @@ function getUserPlan(req: any): string {
     return req.userPlan;
   }
   if (req.user && req.user.uid) {
-    const uid = req.user.uid;
-    return userPlans.get(`uid:${uid}`) || 'free';
+    return 'free';
   }
-  const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-  return userPlans.get(`ip:${ip}`) || 'visitor';
+  return 'visitor';
 }
 
 function getLocalLimitKey(req: any): string {
@@ -354,7 +319,7 @@ function getMaxDailyUses(req: any): number {
   return plan ? plan.limit : SUBSCRIPTION_PLANS.visitor.limit;
 }
 
-async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLimit: number; usedToday: number; remainingDailyUses: number }> {
+async function checkUsageOnly(req: any): Promise<{ allowed: boolean; maxLimit: number; usedToday: number; remainingDailyUses: number }> {
   const isAdmin = isUserAdmin(req);
   if (isAdmin) {
     return { allowed: true, maxLimit: 99999, usedToday: 0, remainingDailyUses: 99999 };
@@ -362,7 +327,6 @@ async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLi
 
   if (req.user && req.user.uid) {
     const uid = req.user.uid;
-    // Fetch latest user state and perform daily reset check if needed
     const user = await UsersService.getOrCreateUser(uid, {
       email: req.user.email,
       name: req.user.name,
@@ -373,8 +337,8 @@ async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLi
       return { allowed: false, maxLimit: 10, usedToday: 10, remainingDailyUses: 0 };
     }
 
+    const used = user.dailyLimit - user.remainingToday;
     if (user.remainingToday <= 0) {
-      const used = user.dailyLimit - user.remainingToday;
       return {
         allowed: false,
         maxLimit: user.dailyLimit,
@@ -383,16 +347,11 @@ async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLi
       };
     }
 
-    // Atomically decrement remainingToday and save user doc
-    await UsersService.consumeUsage(uid);
-    // Increment usage_logs record and return total requests used today
-    const usedToday = await UsageLogsService.incrementUsage(uid);
-
     return {
       allowed: true,
       maxLimit: user.dailyLimit,
-      usedToday,
-      remainingDailyUses: user.remainingToday - 1
+      usedToday: used,
+      remainingDailyUses: user.remainingToday
     };
   } else {
     // Visitor fallback (IP-based)
@@ -404,12 +363,46 @@ async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLi
       return { allowed: false, maxLimit, usedToday: currentCount, remainingDailyUses: 0 };
     }
 
-    localDailyLimits.set(key, currentCount + 1);
     return {
       allowed: true,
       maxLimit,
-      usedToday: currentCount + 1,
-      remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1))
+      usedToday: currentCount,
+      remainingDailyUses: Math.max(0, maxLimit - currentCount)
+    };
+  }
+}
+
+async function consumeUsageOnSuccess(req: any): Promise<{ maxLimit: number; usedToday: number; remainingDailyUses: number }> {
+  const isAdmin = isUserAdmin(req);
+  if (isAdmin) {
+    return { maxLimit: 99999, usedToday: 0, remainingDailyUses: 99999 };
+  }
+
+  if (req.user && req.user.uid) {
+    const uid = req.user.uid;
+    await UsersService.consumeUsage(uid);
+    const usedToday = await UsageLogsService.incrementUsage(uid);
+    const user = await UsersService.getOrCreateUser(uid);
+    const maxLimit = user ? user.dailyLimit : 10;
+    const remainingDailyUses = user ? user.remainingToday : 0;
+
+    return {
+      maxLimit,
+      usedToday,
+      remainingDailyUses
+    };
+  } else {
+    // Visitor fallback (IP-based)
+    const maxLimit = getMaxDailyUses(req);
+    const key = getLocalLimitKey(req);
+    const currentCount = localDailyLimits.get(key) || 0;
+    const nextCount = currentCount + 1;
+    localDailyLimits.set(key, nextCount);
+
+    return {
+      maxLimit,
+      usedToday: nextCount,
+      remainingDailyUses: Math.max(0, maxLimit - nextCount)
     };
   }
 }
@@ -634,265 +627,9 @@ app.get('/api/user/plan', async (req: any, res) => {
   });
 });
 
-// Update or Upgrade user plan (simulated subscription upgrade)
+// Update or Upgrade user plan (Deprecated)
 app.post('/api/user/plan', async (req: any, res) => {
-  const { plan: targetPlanId } = req.body;
-  if (!targetPlanId || !SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS]) {
-    return res.status(400).json({ error: 'خطة غير صالحة أو غير متوفرة.' });
-  }
-
-  let remainingToday = 10;
-  let maxLimit = 10;
-  let usedToday = 0;
-
-  if (req.user && req.user.uid) {
-    const user = await UsersService.updateUserPlan(req.user.uid, targetPlanId, 'active');
-    if (user) {
-      maxLimit = user.dailyLimit;
-      remainingToday = user.remainingToday;
-      usedToday = user.dailyLimit - user.remainingToday;
-
-      // Automatically log subscription history
-      const activeSub = await SubscriptionsService.createSubscription({
-        uid: req.user.uid,
-        planId: targetPlanId,
-        paymentProvider: 'simulated',
-        paymentReference: `ref_${Date.now()}`
-      });
-
-      if (activeSub) {
-        await PaymentsService.createPayment({
-          uid: req.user.uid,
-          subscriptionId: activeSub.subscriptionId,
-          amount: targetPlanId === 'premium' ? 80 : (targetPlanId === 'member' ? 20 : 0),
-          currency: 'USD',
-          provider: 'simulated',
-          status: 'success',
-          transactionId: `txn_${Date.now()}`
-        });
-      }
-    }
-  } else {
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-    userPlans.set(`ip:${ip}`, targetPlanId);
-    
-    const key = getLocalLimitKey(req);
-    const currentCount = localDailyLimits.get(key) || 0;
-    maxLimit = SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS].limit;
-    remainingToday = Math.max(0, maxLimit - currentCount);
-    usedToday = currentCount;
-  }
-
-  res.json({
-    success: true,
-    planId: targetPlanId,
-    maxLimit,
-    usedToday,
-    remainingDailyUses: remainingToday,
-    message: `تم ترقية خطتك بنجاح إلى الباقة الأدبية ${SUBSCRIPTION_PLANS[targetPlanId as keyof typeof SUBSCRIPTION_PLANS].name}.`
-  });
-});
-
-// --- GENERALIZED PAYMENT PROVIDER INTEGRATION ---
-
-// 1. Create Checkout Session for Subscription
-app.post('/api/payment/create-checkout-session', async (req: any, res) => {
-  if (!req.user || !req.user.uid) {
-    return res.status(401).json({ error: 'يجب عليك تسجيل الدخول أولاً لإجراء هذه العملية.' });
-  }
-
-  const { planId } = req.body;
-  if (!planId || (planId !== 'silver' && planId !== 'gold')) {
-    return res.status(400).json({ error: 'الباقة المحددة غير صالحة للاشتراك المدفوع.' });
-  }
-
-  try {
-    const provider = PaymentManager.getProvider();
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const priceAmount = planId === 'silver' ? 2000 : 8000; // $20.00 or $80.00
-    const planName = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS].name;
-
-    const session = await provider.createCheckoutSession({
-      userId: req.user.uid,
-      email: req.user.email || '',
-      planId,
-      amountInCents: priceAmount,
-      planName,
-      appUrl
-    });
-
-    res.json({ url: session.url });
-  } catch (err: any) {
-    console.error('[Payment Checkout Session Creation Error]:', err);
-    res.status(500).json({ error: err.message || 'فشل في إنشاء جلسة دفع جديدة.' });
-  }
-});
-
-// 2. Verify Session Status Server-Side (Secure Fallback)
-app.get('/api/payment/verify-session', async (req: any, res) => {
-  const { session_id } = req.query;
-  if (!session_id) {
-    return res.status(400).json({ error: 'معرف الجلسة (session_id) مطلوب للتحقق.' });
-  }
-
-  if (!req.user || !req.user.uid) {
-    return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً للتحقق من الجلسة.' });
-  }
-
-  try {
-    const provider = PaymentManager.getProvider();
-    const verification = await provider.verifySession(session_id as string, req.user.uid);
-
-    if (verification.success && verification.planId) {
-      const targetPlanId = verification.planId;
-      console.log(`[Payment Verify] Explicit session verify success for ${req.user.uid} -> ${targetPlanId}`);
-      if (db) {
-        await db.collection('users').doc(req.user.uid).set({
-          planId: targetPlanId,
-          email: req.user.email || null,
-          paymentProvider: provider.name,
-          paymentTransactionId: verification.transactionId || null,
-          subscriptionStatus: 'active',
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-      }
-      userPlans.set(`uid:${req.user.uid}`, targetPlanId);
-
-      return res.json({
-        success: true,
-        planId: targetPlanId,
-        message: verification.message
-      });
-    }
-
-    res.json({
-      success: false,
-      message: verification.message
-    });
-  } catch (err: any) {
-    console.error('[Payment Verify Error]:', err);
-    res.status(500).json({ error: 'حدث خطأ أثناء التحقق من حالة الاشتراك.' });
-  }
-});
-
-// 3. Webhook Endpoint with Validation
-app.post('/api/payment/webhook', async (req: any, res) => {
-  try {
-    const provider = PaymentManager.getProvider();
-    const result = await provider.handleWebhook(req.body, req.headers, req.rawBody);
-
-    if (!result.processed) {
-      console.error('[Payment Webhook] Webhook signature verification or processing failed.');
-      return res.status(400).send('Invalid webhook signature or payload');
-    }
-
-    const transactionId = req.body?.obj?.id?.toString();
-
-    // 1. Check for Duplicate Webhooks
-    if (transactionId && db) {
-      const existingPayments = await db.collection('payments').where('transactionId', '==', transactionId).get();
-      if (existingPayments.size > 0) {
-        console.log(`[Payment Webhook] Duplicate Webhook detected. Transaction ID ${transactionId} already processed.`);
-        addDevLog('paymob_webhook', JSON.stringify(req.body), `إشعار مكرر لعملية الدفع رقم ${transactionId}. تم تجاهله تفادياً للتكرار.`);
-        return res.json({ received: true, alreadyProcessed: true });
-      }
-    }
-
-    // 2. If Payment Failed: Do not change anything
-    if (result.status !== 'active') {
-      console.log(`[Payment Webhook] Webhook status is not active: ${result.status}. No plan changes applied.`);
-      addDevLog('paymob_webhook', JSON.stringify(req.body), `فشلت عملية الدفع أو لم تكتمل بعد لطلب الدفع رقم ${transactionId}. لم يتم تغيير أي شيء لحساب المستخدم.`);
-      return res.json({ received: true, status: result.status });
-    }
-
-    // 3. Search for the User
-    const userId = result.userId;
-    if (!userId || !db) {
-      console.error('[Payment Webhook] Missing userId in paymob payload.');
-      return res.status(400).send('Missing userId');
-    }
-
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      console.error(`[Payment Webhook] User with ID ${userId} not found in Firestore.`);
-      addDevLog('paymob_webhook', JSON.stringify(req.body), `فشل العثور على المستخدم صاحب الرقم التعريفي ${userId} في قاعدة البيانات.`);
-      return res.status(404).send('User not found');
-    }
-
-    const userData = userDoc.data();
-
-    // 4. Deduce target plan and limits based on pricing (20$ vs 80$)
-    let planId = 'member';
-    let limit = 100;
-    let priceAmount = 20;
-
-    const amountInCents = req.body?.obj?.amount_cents || 2000;
-    const planName = req.body?.obj?.order?.items?.[0]?.name || '';
-
-    if (amountInCents >= 7500 || planName.includes('احترافية') || planName.includes('premium') || planName.includes('gold')) {
-      planId = 'premium';
-      limit = 500;
-      priceAmount = 80;
-    }
-
-    const nowStr = new Date().toISOString();
-    const renewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-    // 5. Update User Document inside Firestore Atomically
-    await db.collection('users').doc(userId).set({
-      planId,
-      subscriptionStatus: 'active',
-      dailyLimit: limit,
-      remainingToday: limit,
-      renewalDate,
-      updatedAt: nowStr
-    }, { merge: true });
-
-    // Update in-memory user plans cache
-    userPlans.set(`uid:${userId}`, planId);
-
-    // 6. Record Subscription History Record
-    const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    await db.collection('subscriptions').doc(subscriptionId).set({
-      subscriptionId,
-      uid: userId,
-      planId,
-      status: 'active',
-      startDate: nowStr,
-      endDate: renewalDate,
-      renewalDate,
-      paymentProvider: 'paymob',
-      paymentReference: transactionId || `paymob_${Date.now()}`,
-      autoRenew: true
-    });
-
-    // 7. Record Payment History Record
-    const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    await db.collection('payments').doc(paymentId).set({
-      paymentId,
-      uid: userId,
-      subscriptionId,
-      amount: priceAmount,
-      currency: 'USD',
-      provider: 'paymob',
-      status: 'success',
-      transactionId: transactionId || paymentId,
-      createdAt: nowStr
-    });
-
-    // 8. Record Detailed Dev Log inside the Admin Panel
-    const planLabel = planId === 'premium' ? 'الخطة الاحترافية' : 'الخطة المتوسطة';
-    addDevLog(
-      'paymob_webhook',
-      JSON.stringify(req.body),
-      `تم تفعيل اشتراك جديد بنجاح! تم ترقية المستخدم ${userData?.email || userData?.displayName || userId} إلى ${planLabel} (الحد اليومي الجديد: ${limit} استخدام، تاريخ التجديد القادم: ${renewalDate}). رقم المعاملة: ${transactionId}`
-    );
-
-    res.json({ received: true });
-  } catch (err: any) {
-    console.error(`[Payment Webhook Handler] Error processing event:`, err);
-    return res.status(500).send(`Internal Webhook Error: ${err.message}`);
-  }
+  res.status(400).json({ error: 'الاشتراكات والمدفوعات تم إيقافها، المنصة الآن مجانية بالكامل للجميع.' });
 });
 
 // Developer logs endpoint
@@ -1178,8 +915,8 @@ app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
       });
     }
 
-    // Call checkAndConsumeUsage before AI generation
-    const usageCheck = await checkAndConsumeUsage(req);
+    // Call checkUsageOnly before AI generation
+    const usageCheck = await checkUsageOnly(req);
     if (!usageCheck.allowed) {
       trackTelemetry(req, 'reject_daily');
       return res.status(429).json({
@@ -1193,12 +930,15 @@ app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
     const result = await handleGeneratePoem(req.body, aiInstance);
     const duration = Date.now() - startGemini;
 
+    // Consume only on successful response
+    const consumed = await consumeUsageOnSuccess(req);
+
     // Track successful poem generation
     trackTelemetry(req, 'success_poem', { duration });
 
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: usageCheck.remainingDailyUses }
-      : { result, remainingDailyUses: usageCheck.remainingDailyUses };
+      ? { ...result, remainingDailyUses: consumed.remainingDailyUses }
+      : { result, remainingDailyUses: consumed.remainingDailyUses };
 
     return res.json(responseData);
   } catch (err: any) {
@@ -1241,8 +981,8 @@ app.post('/api/literary-tool', requireAuth, async (req: any, res) => {
       });
     }
 
-    // Call checkAndConsumeUsage before AI generation
-    const usageCheck = await checkAndConsumeUsage(req);
+    // Call checkUsageOnly before AI generation
+    const usageCheck = await checkUsageOnly(req);
     if (!usageCheck.allowed) {
       trackTelemetry(req, 'reject_daily');
       return res.status(429).json({
@@ -1256,12 +996,15 @@ app.post('/api/literary-tool', requireAuth, async (req: any, res) => {
     const result = await handleLiteraryTool(toolAction, payload, aiInstance);
     const duration = Date.now() - startGemini;
 
+    // Consume only on successful response
+    const consumed = await consumeUsageOnSuccess(req);
+
     // Track successful tool execution
     trackTelemetry(req, 'success_tool', { duration, toolAction });
 
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: usageCheck.remainingDailyUses }
-      : { result, remainingDailyUses: usageCheck.remainingDailyUses };
+      ? { ...result, remainingDailyUses: consumed.remainingDailyUses }
+      : { result, remainingDailyUses: consumed.remainingDailyUses };
 
     return res.json(responseData);
   } catch (err: any) {
@@ -1474,12 +1217,6 @@ async function setupFrontend() {
 
 // Start local development server
 setupFrontend().then(async () => {
-  try {
-    console.log('[Startup] Seeding database plans...');
-    await PlansService.seedPlans();
-  } catch (err) {
-    console.error('[Startup] Failed to seed plans:', err);
-  }
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });

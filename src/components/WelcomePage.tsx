@@ -15,18 +15,22 @@ import {
 
 interface WelcomePageProps {
   onSignInWithGoogle: () => void;
+  onSignInAnonymously: () => void;
   isDarkMode: boolean;
   unauthorizedDomainError: string | null;
   popupClosedError: boolean;
   error: string | null;
+  isSigningIn?: boolean;
 }
 
 export default function WelcomePage({
   onSignInWithGoogle,
+  onSignInAnonymously,
   isDarkMode,
   unauthorizedDomainError,
   popupClosedError,
-  error
+  error,
+  isSigningIn = false
 }: WelcomePageProps) {
   return (
     <div className={`min-h-screen text-right select-none transition-colors duration-300 font-sans ${
@@ -79,20 +83,32 @@ export default function WelcomePage({
           <div className="w-full max-w-md mx-auto mb-10">
             <button
               onClick={onSignInWithGoogle}
+              disabled={isSigningIn}
               className={`w-full py-4 px-6 rounded-2xl font-serif font-bold text-base md:text-lg shadow-xl active:translate-y-0.5 transition-all flex items-center justify-center gap-3 border ${
+                isSigningIn ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'
+              } ${
                 isDarkMode 
                   ? 'bg-gradient-to-b from-[#dfba6b] to-[#cba355] text-[#060c08] border-[#dfba6b] hover:brightness-110' 
                   : 'bg-gradient-to-b from-[#1a472a] to-[#12331e] text-white border-[#12331e] hover:brightness-105'
-              } cursor-pointer`}
+              }`}
               id="welcome-google-signin-btn"
             >
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              الدخول والتحليق بواسطة Google
+              {isSigningIn ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                  جاري تسجيل الدخول...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  الدخول والتحليق بواسطة Google
+                </>
+              )}
             </button>
 
             {/* Error Handlers */}
@@ -104,8 +120,41 @@ export default function WelcomePage({
             )}
 
             {popupClosedError && (
-              <div className="mt-4 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs text-center leading-relaxed">
-                ⚠️ تم إلغاء تسجيل الدخول أو إغلاقه قبل الاكتمال. يرجى السماح بالنوافذ المنبثقة للـ Auth والمحاولة مجدداً.
+              <div className="mt-6 p-6 rounded-2xl border-2 border-amber-400 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 text-right space-y-4" dir="rtl">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl mt-0.5">💡</span>
+                  <div className="flex-1 space-y-2">
+                    <h4 className="font-serif font-bold text-sm text-amber-950 dark:text-amber-300">
+                      حل مشكلة تسجيل الدخول (إغلاق أو حظر النافذة المنبثقة)
+                    </h4>
+                    <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                      يبدو أن متصفحك أو إطار العمل الحالي (IFrame) يمنع ظهور النوافذ المنبثقة لـ Google Sign-In لتسجيل الدخول.
+                    </p>
+                    <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400 font-bold">
+                      لا تقلق! لقد قمنا بتوفير حلين فوريين لمتابعة إبداعك الأدبي دون قيود:
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={onSignInAnonymously}
+                        className="px-4 py-2 bg-[#1a472a] hover:bg-[#1f5633] text-[#dfba6b] font-serif font-black text-[11px] rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-[#dfba6b]/20"
+                      >
+                        <Crown className="w-3.5 h-3.5" />
+                        الحل 1: دخول فوري كشاعر ضيف
+                      </button>
+
+                      <a
+                        href={window.location.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 font-serif font-bold text-[11px] rounded-xl shadow-xs transition-all text-center flex items-center justify-center gap-1.5 border border-gray-200"
+                      >
+                        🌐 الحل 2: فتح في علامة تبويب مستقلة
+                      </a>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
