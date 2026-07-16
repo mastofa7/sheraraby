@@ -113,7 +113,7 @@ app.use(express.json({
     req.rawBody = buf;
   }
 }));
-app.use(authenticateFirebaseToken);
+app.use('/api', authenticateFirebaseToken);
 
 // Professional Error Logger
 function logError(context: string, error: any) {
@@ -318,10 +318,11 @@ async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLi
       };
     }
 
-    // Atomically decrement remainingToday and save user doc
-    await UsersService.consumeUsage(uid);
-    // Increment usage_logs record and return total requests used today
-    const usedToday = await UsageLogsService.incrementUsage(uid);
+    // Parallelize usage consumption and logs increment to reduce database write latency by ~50%
+    const [, usedToday] = await Promise.all([
+      UsersService.consumeUsage(uid),
+      UsageLogsService.incrementUsage(uid)
+    ]);
 
     return {
       allowed: true,

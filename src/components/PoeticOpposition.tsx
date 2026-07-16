@@ -764,30 +764,30 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={handleCopyText}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-[#dfba6b]/30 text-[#dfba6b] bg-black/40 hover:bg-[#152e1f] transition-colors cursor-pointer"
                   >
-                    {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#dfba6b]/70" />}
                     {copied ? 'تم النسخ!' : 'نسخ'}
                   </button>
                   <button
                     onClick={downloadTxt}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-[#dfba6b]/30 text-[#dfba6b] bg-black/40 hover:bg-[#152e1f] transition-colors cursor-pointer"
                   >
-                    <FileDown className="w-3.5 h-3.5 text-royal-600" />
+                    <FileDown className="w-3.5 h-3.5 text-[#dfba6b]/70" />
                     TXT
                   </button>
                   <button
                     onClick={downloadDoc}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-[#dfba6b]/30 text-[#dfba6b] bg-black/40 hover:bg-[#152e1f] transition-colors cursor-pointer"
                   >
-                    <FileDown className="w-3.5 h-3.5 text-blue-600" />
+                    <FileDown className="w-3.5 h-3.5 text-[#dfba6b]/70" />
                     DOCX
                   </button>
                   <button
                     onClick={handlePrint}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-[#dfba6b]/30 text-[#dfba6b] bg-black/40 hover:bg-[#152e1f] transition-colors cursor-pointer"
                   >
-                    <Printer className="w-3.5 h-3.5 text-[#8b1d2e]" />
+                    <Printer className="w-3.5 h-3.5 text-red-400" />
                     PDF
                   </button>
                   <button

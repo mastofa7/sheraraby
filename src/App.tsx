@@ -31,20 +31,24 @@ import {
   Crown
 } from 'lucide-react';
 import MeterSelector from './components/MeterSelector';
+import RhymePanel from './components/RhymePanel';
+import PurposeSelector from './components/PurposeSelector';
 import PoemDisplay from './components/PoemDisplay';
 import HistoryList from './components/HistoryList';
-import { AdvancedTools } from './components/AdvancedTools';
-import PoeticOpposition from './components/PoeticOpposition';
-import PoeticIndustries from './components/PoeticIndustries';
-import PoemRevisionWorkspace from './components/PoemRevisionWorkspace';
-import { PoetAnalytics } from './components/PoetAnalytics';
-import AdminDashboard from './components/AdminDashboard';
 import { METERS_DATA } from './metersData';
 import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 import TurnstileWidget from './components/TurnstileWidget';
 import WelcomePage from './components/WelcomePage';
 import GatewayPage from './components/GatewayPage';
 import BotanicalThemeBackground from './components/BotanicalThemeBackground';
+
+// Lazy load heavy sub-components to optimize initial bundle size, load time, and React rendering parsing
+const AdvancedTools = React.lazy(() => import('./components/AdvancedTools').then(m => ({ default: m.AdvancedTools })));
+const PoeticOpposition = React.lazy(() => import('./components/PoeticOpposition'));
+const PoeticIndustries = React.lazy(() => import('./components/PoeticIndustries'));
+const PoemRevisionWorkspace = React.lazy(() => import('./components/PoemRevisionWorkspace'));
+const PoetAnalytics = React.lazy(() => import('./components/PoetAnalytics').then(m => ({ default: m.PoetAnalytics })));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 
 import { auth, googleProvider, apiFetch } from './firebase';
 import { signInWithPopup, signInAnonymously, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -306,6 +310,7 @@ export default function App() {
 
   // 1. Initial State for form
   const [meterName, setMeterName] = useState<string>('الطويل');
+  const [meterVariant, setMeterVariant] = useState<string>('التام');
   const [purpose, setPurpose] = useState<string>('الفخر');
   const [customPurpose, setCustomPurpose] = useState<string>('');
   const [isOpposition, setIsOpposition] = useState<boolean>(false);
@@ -316,6 +321,7 @@ export default function App() {
   const [versesCount, setVersesCount] = useState<number>(7);
   const [rhymeSystem, setRhymeSystem] = useState<RhymeSystem>('unified');
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
+  const [customRhymeType, setCustomRhymeType] = useState<string>('موحدة');
 
   // ميزات متقدمة
   const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin'>('studio');
@@ -569,6 +575,7 @@ export default function App() {
 
       const params: GenerationParams = {
         meterName,
+        meterVariant,
         purpose,
         customPurpose: purpose === 'غير ذلك' ? customPurpose : undefined,
         isOpposition,
@@ -579,6 +586,7 @@ export default function App() {
         versesCount,
         rhymeSystem,
         customRhymeLetter: rhymeSystem === 'custom' ? customRhymeLetter : undefined,
+        customRhymeType,
       };
 
       const response = await apiFetch('/api/generate-poem', {
@@ -929,19 +937,6 @@ export default function App() {
                 </button>
               )}
 
-              {/* Dark Mode Toggle */}
-              <button
-                onClick={handleToggleDarkMode}
-                className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                  isDarkMode 
-                    ? 'bg-[#152e1f] border-[#dfba6b]/30 text-[#dfba6b] hover:bg-[#1f422e]' 
-                    : 'bg-[#1a472a] border-[#b58d3d]/30 text-[#b58d3d] hover:bg-[#235f38]'
-                }`}
-                title={isDarkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
-              >
-                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-
               {/* Account status display in header */}
               {user && (
                 <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 select-none ${
@@ -1157,6 +1152,12 @@ export default function App() {
         )}
 
         {/* Active Tab View */}
+        <React.Suspense fallback={
+          <div className="p-12 text-center flex flex-col items-center justify-center gap-3 min-h-[300px]" dir="rtl">
+            <div className="w-10 h-10 border-2 border-t-transparent border-[#dfba6b] rounded-full animate-spin" />
+            <p className="font-serif italic text-sm text-gray-500 animate-pulse">جاري تحميل اللوحة البلاغية ونقش المخطوطات...</p>
+          </div>
+        }>
         {activeMainTab === 'studio' && (
           <div className="space-y-6">
             {isRevisionWorkspaceOpen && currentPoem ? (
@@ -1290,44 +1291,21 @@ export default function App() {
 
                 {/* 1. METER SELECTOR (CUSTOM COMPLEX GRID IN METERSELECTOR COMPONENT) */}
                 <div className="border-b border-gray-100 dark:border-white/5 pb-6">
-                  <MeterSelector selectedMeter={meterName} onChange={setMeterName} />
+                  <MeterSelector
+                    selectedMeter={meterName}
+                    onChange={setMeterName}
+                    selectedVariant={meterVariant}
+                    onVariantChange={setMeterVariant}
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* 2. PURPOSE SELECTOR */}
-                  <div className="flex flex-col gap-2">
-                    <label className={`font-bold text-sm flex items-center gap-1 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
-                      <Layers className="w-4 h-4 text-[#b58d3d]" />
-                      غرض القصيدة الشعري
-                    </label>
-                    <select
-                      value={purpose}
-                      onChange={(e) => setPurpose(e.target.value)}
-                      className={`w-full p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#1a472a] outline-none transition-all cursor-pointer ${
-                        isDarkMode ? 'bg-[#0a120d] border-[#dfba6b]/30 text-white' : 'bg-[#fcfaf7] border-[#b58d3d]/30'
-                      }`}
-                      id="purpose-select"
-                    >
-                      {PURPOSES.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
+                {/* 2. PURPOSE SELECTOR (FULL-WIDTH ACCORDION SEARCHABLE COMPONENT) */}
+                <div className="border-b border-gray-100 dark:border-white/5 pb-6">
+                  <PurposeSelector selectedPurpose={purpose} onChange={setPurpose} isDarkMode={isDarkMode} />
+                </div>
 
-                    {purpose === 'غير ذلك' && (
-                      <input
-                        type="text"
-                        value={customPurpose}
-                        onChange={(e) => setCustomPurpose(e.target.value)}
-                        placeholder="ادخل غرضاً مخصّصاً للقصيدة..."
-                        className={`w-full p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#1a472a] outline-none mt-2 ${
-                          isDarkMode ? 'bg-[#0a120d] border-[#dfba6b]/30 text-white' : 'bg-[#fcfaf7] border-[#b58d3d]/30'
-                        }`}
-                        required
-                      />
-                    )}
-                  </div>
-
-                  {/* 6. VERSES COUNT & RHYME SELECTION */}
+                {/* 6. VERSES COUNT (FULL-WIDTH CONTAINER) */}
+                <div className="border-b border-gray-100 dark:border-white/5 pb-6">
                   <div className="flex flex-col gap-2">
                     <label className={`font-bold text-sm flex items-center gap-1 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
                       <BookOpen className="w-4 h-4 text-[#8b1d2e]" />
@@ -1360,86 +1338,19 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 7. RHYME SYSTEM */}
-                <div className={`border rounded-xl p-4 flex flex-col gap-3 ${
-                  isDarkMode ? 'bg-[#0a120d]/50 border-[#dfba6b]/20' : 'bg-[#fdfbf7] border-[#b58d3d]/20'
-                }`}>
-                  <label className={`font-bold text-sm ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>كيف تريد نظام القافية؟</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRhymeSystem('unified')}
-                      className={`p-3 rounded-lg border text-xs text-right font-medium transition-all cursor-pointer ${
-                        rhymeSystem === 'unified'
-                          ? 'bg-[#1a472a] text-white border-[#1a472a]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      ● قافية موحدة في جميع الأبيات
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRhymeSystem('strophic')}
-                      className={`p-3 rounded-lg border text-xs text-right font-medium transition-all cursor-pointer ${
-                        rhymeSystem === 'strophic'
-                          ? 'bg-[#1a472a] text-white border-[#1a472a]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      ● قافية لكل مقطوعة
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRhymeSystem('tasri')}
-                      className={`p-3 rounded-lg border text-xs text-right font-medium transition-all cursor-pointer ${
-                        rhymeSystem === 'tasri'
-                          ? 'bg-[#1a472a] text-white border-[#1a472a]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      ● التصريع في المطلع فقط
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRhymeSystem('internal')}
-                      className={`p-3 rounded-lg border text-xs text-right font-medium transition-all cursor-pointer ${
-                        rhymeSystem === 'internal'
-                          ? 'bg-[#1a472a] text-white border-[#1a472a]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      ● قافية بين شطري البيت الواحد
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRhymeSystem('custom')}
-                      className={`p-3 rounded-lg border text-xs text-right font-medium transition-all cursor-pointer ${
-                        rhymeSystem === 'custom'
-                          ? 'bg-[#1a472a] text-white border-[#1a472a]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      ● تخصيص حرف الروي يدويًا
-                    </button>
-                  </div>
-
-                  {rhymeSystem === 'custom' && (
-                    <div className="mt-2 animate-fade-in">
-                      <label className="text-xs text-gray-600 block mb-1">اكتب حرف الروي المراد الالتزام به (مثل: د، ل، ر):</label>
-                      <input
-                        type="text"
-                        maxLength={2}
-                        value={customRhymeLetter}
-                        onChange={(e) => setCustomRhymeLetter(e.target.value)}
-                        placeholder="مثال: ل"
-                        className="w-24 bg-white border border-[#b58d3d]/30 p-2 text-center rounded-lg text-sm font-bold focus:ring-2 focus:ring-[#1a472a]"
-                      />
-                    </div>
-                  )}
+                {/* 7. PROFESSIONAL RHYME PANEL */}
+                <div className="border-b border-gray-100 dark:border-white/5 pb-6">
+                  <RhymePanel
+                    rhymeSystem={rhymeSystem}
+                    onChangeRhymeSystem={setRhymeSystem}
+                    customRhymeLetter={customRhymeLetter}
+                    onChangeCustomRhymeLetter={setCustomRhymeLetter}
+                    customRhymeType={customRhymeType}
+                    onChangeCustomRhymeType={setCustomRhymeType}
+                    purpose={purpose}
+                    description={description}
+                    isDarkMode={isDarkMode}
+                  />
                 </div>
 
                 {/* 3. POETIC OPPOSITION (المعارضة الشعرية) */}
@@ -1988,6 +1899,7 @@ export default function App() {
             />
           </div>
         )}
+        </React.Suspense>
 
 
 

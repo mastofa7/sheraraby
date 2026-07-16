@@ -3,6 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export interface PoeticMeterVariant {
+  name: string; // اسم الصورة العروضية (مثال: البسيط التام، البسيط المجزوء)
+  feet: string; // التفعيلات العروضية المحددة لهذه الصورة
+  description: string; // شرح مفصل لهذه الصورة العروضية واستخدامها
+  example: {
+    verse: string; // الشاهد الشعري لهذه الصورة
+    poet: string; // الشاعر قائل الشاهد
+  };
+}
+
 export interface PoeticMeterInfo {
   name: string;
   feet: string; // التفعيلات الكاملة
@@ -11,6 +21,7 @@ export interface PoeticMeterInfo {
     verse: string; // البيت المثال
     poet: string; // الشاعر القائل
   };
+  variants?: PoeticMeterVariant[]; // الصور العروضية المتوفرة
 }
 
 export type RhymeSystem =
@@ -22,6 +33,7 @@ export type RhymeSystem =
 
 export interface GenerationParams {
   meterName: string; // البحر الشعري
+  meterVariant?: string; // الصورة العروضية المختارة للبحر (مثلاً: البسيط المجزوء)
   purpose: string; // الغرض الشعري
   customPurpose?: string; // غرض مخصص إن وجد
   isOpposition: boolean; // هل يريد معارضة قصيدة؟
@@ -32,6 +44,7 @@ export interface GenerationParams {
   versesCount: number; // عدد الأبيats
   rhymeSystem: RhymeSystem; // نظام القافية
   customRhymeLetter?: string; // حرف الروي المخصص يدويًا
+  customRhymeType?: string; // نوع القافية المختار من لوحة القافية (موحدة، لكل مقطوعة، مزدوجة، متناوبة، إلخ)
 }
 
 export interface PoemVerse {

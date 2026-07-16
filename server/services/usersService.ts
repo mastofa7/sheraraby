@@ -8,6 +8,14 @@ import { FirestoreUser } from '../types';
 import { addDevLog } from '../../src/backend-logic';
 
 export class UsersService {
+  // In-memory cache for user profiles to avoid redundant Firestore reads
+  private static userCache = new Map<string, { user: FirestoreUser; timestamp: number }>();
+  private static CACHE_TTL_MS = 15000; // 15 seconds cache TTL
+
+  static clearCache(uid: string) {
+    this.userCache.delete(uid);
+  }
+
   /**
    * Check if user email is admin.
    */
@@ -20,9 +28,17 @@ export class UsersService {
    */
   static async getOrCreateUser(uid: string, authData?: { email?: string; name?: string; picture?: string }): Promise<FirestoreUser | null> {
     if (!db) return null;
+    const nowTimeMs = Date.now();
+    const cached = this.userCache.get(uid);
+    const today = new Date().toISOString().slice(0, 10);
+    
+    // Return cached user if it's within TTL and the day matches (for resetting limits)
+    if (cached && (nowTimeMs - cached.timestamp < this.CACHE_TTL_MS) && cached.user.lastResetDate === today) {
+      return cached.user;
+    }
+
     try {
       const userDoc = await db.collection('users').doc(uid).get();
-      const today = new Date().toISOString().slice(0, 10);
       const now = new Date();
 
       if (userDoc.exists) {
@@ -61,6 +77,9 @@ export class UsersService {
         if (needsUpdate) {
           await db.collection('users').doc(uid).set(user, { merge: true });
         }
+        
+        // Cache the result
+        this.userCache.set(uid, { user, timestamp: nowTimeMs });
         return user;
       }
 
@@ -88,6 +107,9 @@ export class UsersService {
 
       await db.collection('users').doc(uid).set(newUser);
       console.log(`[UsersService] Created user profile for UID: ${uid}`);
+      
+      // Cache the newly created user
+      this.userCache.set(uid, { user: newUser, timestamp: nowTimeMs });
       return newUser;
     } catch (err) {
       console.error(`[UsersService] Error fetching/creating user ${uid}:`, err);
@@ -101,6 +123,7 @@ export class UsersService {
   static async consumeUsage(uid: string): Promise<boolean> {
     if (!db) return false;
     try {
+      this.clearCache(uid); // Clear cache before read to guarantee we fetch from Firestore
       const user = await this.getOrCreateUser(uid);
       if (!user) return false;
 
@@ -116,6 +139,7 @@ export class UsersService {
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
+      this.clearCache(uid); // Clear cache again after update so the next read fetches updated count
       return true;
     } catch (err) {
       console.error(`[UsersService] Error consuming usage for user ${uid}:`, err);
