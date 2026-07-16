@@ -383,16 +383,7 @@ export default function App() {
 
   // Load dark mode on mount
   useEffect(() => {
-    try {
-      const savedDarkMode = localStorage.getItem('arabic_poems_dark_mode');
-      if (savedDarkMode === 'false') {
-        setIsDarkMode(false);
-      } else {
-        setIsDarkMode(true);
-      }
-    } catch (err) {
-      console.error('Failed to load settings', err);
-    }
+    setIsDarkMode(true);
   }, []);
 
   const fetchDiwanFromBackend = async () => {
@@ -479,9 +470,7 @@ export default function App() {
   };
 
   const handleToggleDarkMode = () => {
-    const nextVal = !isDarkMode;
-    setIsDarkMode(nextVal);
-    localStorage.setItem('arabic_poems_dark_mode', String(nextVal));
+    setIsDarkMode(true);
   };
 
   const handleFetchSuggestions = async () => {

@@ -37,8 +37,8 @@
 
 /* Base modifications for beautiful custom manuscript scrolls and layout */
 body {
-  background-color: #f7f5ed;
-  color: #1a1a1a;
+  background-color: #030a05;
+  color: #e8f5ee;
   font-family: var(--font-sans);
   direction: rtl;
 }
@@ -52,7 +52,7 @@ body {
   align-items: center;
   gap: 2rem;
   padding: 0.75rem 1.5rem;
-  border-bottom: 1px dashed rgba(131, 24, 40, 0.15);
+  border-bottom: 1px dashed rgba(223, 186, 107, 0.15);
   font-family: var(--font-serif);
 }
 
@@ -70,8 +70,8 @@ body {
   font-size: 1.35rem;
   line-height: 2.2rem;
   font-weight: 700;
-  color: #111;
-  text-shadow: 0.5px 0.5px 0px rgba(0, 0, 0, 0.05);
+  color: #fffcf0;
+  text-shadow: 0.5px 0.5px 2px rgba(0, 0, 0, 0.6);
 }
 
 .poetry-shatr-1 {
