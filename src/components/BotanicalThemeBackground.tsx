@@ -1,27 +1,7 @@
-import React from 'react';
-import { 
-  Sparkles, 
-  Crown, 
-  Award, 
-  LogOut, 
-  Play, 
-  Gauge,
-  ShieldCheck
-} from 'lucide-react';
+import React, { useMemo } from 'react';
 
-interface GatewayPageProps {
-  user: any;
-  userPlanId: string;
-  userPlanLimit: number;
-  remainingDailyUses: number | null;
-  isUserAdmin: boolean;
-  onEnterPlatform: () => void;
-  onSignOut: () => void;
-  isDarkMode: boolean;
-}
-
-// 1. Faint Andalusian / Moorish Stone Arches Component
-function AncientArches() {
+// 1. Moorish/Andalusian Stone Arches Component
+export function AncientArches() {
   return (
     <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden select-none opacity-20 md:opacity-25 mix-blend-screen z-0">
       <svg className="w-full h-full" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,7 +29,7 @@ function AncientArches() {
 }
 
 // 2. Top-Left Cascading Branch with Pomegranate Flower (Jullanar)
-function TopLeftBranch() {
+export function TopLeftBranch() {
   return (
     <div className="absolute top-0 left-0 w-[42%] max-w-[340px] aspect-square pointer-events-none z-10 select-none origin-top-left animate-sway-slow">
       <svg className="w-full h-full" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -115,7 +95,7 @@ function TopLeftBranch() {
 }
 
 // 3. Top-Right Cascading Branch
-function TopRightBranch() {
+export function TopRightBranch() {
   return (
     <div className="absolute top-0 right-0 w-[38%] max-w-[300px] aspect-square pointer-events-none z-10 select-none origin-top-right animate-sway-reverse">
       <svg className="w-full h-full" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -154,7 +134,7 @@ function TopRightBranch() {
 }
 
 // 4. Bottom-Right Creeping Branch with Hanging Ripe Pomegranates (ثمار الرمان)
-function BottomRightBranch() {
+export function BottomRightBranch() {
   return (
     <div className="absolute bottom-0 right-0 w-[44%] max-w-[340px] aspect-square pointer-events-none z-10 select-none origin-bottom-right animate-sway-slow">
       <svg className="w-full h-full" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -219,7 +199,7 @@ function BottomRightBranch() {
 }
 
 // 5. Bottom-Left Creeping Leafy Branch
-function BottomLeftBranch() {
+export function BottomLeftBranch() {
   return (
     <div className="absolute bottom-0 left-0 w-[35%] max-w-[260px] aspect-square pointer-events-none z-10 select-none origin-bottom-left animate-sway-reverse">
       <svg className="w-full h-full" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -252,30 +232,10 @@ function BottomLeftBranch() {
   );
 }
 
-export default function GatewayPage({
-  user,
-  userPlanId,
-  userPlanLimit,
-  remainingDailyUses,
-  isUserAdmin,
-  onEnterPlatform,
-  onSignOut,
-  isDarkMode
-}: GatewayPageProps) {
-  
-  // Format Plan Names
-  const getPlanLabel = () => {
-    if (isUserAdmin) return 'المالك والمدير (كامل الصلاحيات)';
-    return 'الخطة المجانية (Free)';
-  };
-
-  // Format limits
-  const limitLabel = isUserAdmin ? 'غير محدود عروضياً' : `${userPlanLimit} محاولات يومياً`;
-  const remainingLabel = isUserAdmin ? 'استهلاك غير محدود (∞)' : `${remainingDailyUses !== null ? remainingDailyUses : '...'} محاولات متبقية اليوم`;
-
-  // Generate gold particles dynamically
-  const fireflies = React.useMemo(() => {
-    return Array.from({ length: 14 }).map((_, i) => {
+// 6. Unified Background Component
+export default function BotanicalThemeBackground() {
+  const fireflies = useMemo(() => {
+    return Array.from({ length: 15 }).map((_, i) => {
       const size = Math.random() * 4 + 2; // 2px to 6px
       const left = Math.random() * 100; // 0% to 100%
       const delay = Math.random() * 18; // 0s to 18s
@@ -300,9 +260,8 @@ export default function GatewayPage({
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 text-center select-none overflow-hidden bg-[#030a05] text-white font-sans" dir="rtl">
-      
-      {/* Self-contained CSS Animations */}
+    <div className="absolute inset-0 w-full h-full overflow-hidden select-none pointer-events-none z-0">
+      {/* Self-contained CSS Styles */}
       <style>{`
         @keyframes sway {
           0%, 100% { transform: rotate(0deg); }
@@ -326,18 +285,11 @@ export default function GatewayPage({
           0%, 100% { opacity: 0.3; transform: scale(1.2) translate(0, 0); }
           50% { opacity: 0.15; transform: scale(0.95) translate(-35px, 25px); }
         }
-        @keyframes fade-in-entrance {
-          from { opacity: 0; transform: translateY(15px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
         .animate-sway-slow {
           animation: sway 15s ease-in-out infinite;
         }
         .animate-sway-reverse {
           animation: sway-reverse 18s ease-in-out infinite;
-        }
-        .animate-fade-in {
-          animation: fade-in-entrance 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .particle-gold {
           background: radial-gradient(circle, rgba(254,240,138,0.95) 0%, rgba(217,119,6,0.3) 60%, rgba(217,119,6,0) 100%);
@@ -351,11 +303,6 @@ export default function GatewayPage({
           background: radial-gradient(circle at 70% 60%, rgba(22,101,52,0.2) 0%, rgba(3,10,5,0) 75%);
           animation: subtle-mist-alt 32s ease-in-out infinite;
         }
-        .luxury-text-shine {
-          background: linear-gradient(135deg, #fffcf0 0%, #ffeed1 20%, #dfba6b 50%, #cba355 80%, #997424 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
       `}</style>
 
       {/* 1. Deep Emerald Ambient Radial Gradient Background Layer */}
@@ -365,7 +312,7 @@ export default function GatewayPage({
       <div className="absolute inset-0 mist-layer-1 pointer-events-none z-0" />
       <div className="absolute inset-0 mist-layer-2 pointer-events-none z-0" />
 
-      {/* 3. Elegant Moorish Arches Outline */}
+      {/* 3. Moorish Arches Outline */}
       <AncientArches />
 
       {/* 4. Natural Botanical Branch Frames (4 Corners) */}
@@ -376,133 +323,6 @@ export default function GatewayPage({
 
       {/* 5. Gold Dust / Fireflies */}
       {fireflies}
-
-      {/* 6. Centered Main Gateway Card with glassmorphic luxury styling */}
-      <div className="w-full max-w-lg rounded-3xl border border-[#dfba6b]/35 p-8 shadow-2xl relative overflow-hidden transition-all duration-300 bg-[#09140d]/90 backdrop-blur-md z-10 select-none animate-fade-in">
-        
-        {/* Shimmering Top Calligraphic corner emblem */}
-        <div className="absolute top-0 left-0 w-16 h-16 bg-[radial-gradient(ellipse_at_top_left,rgba(223,186,107,0.18),transparent)] pointer-events-none" />
-        
-        {/* Header Greeting */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold border bg-[#dfba6b]/10 border-[#dfba6b]/20 text-[#dfba6b] mb-4">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>بوابة التحقق الآمن وعقد القرائح</span>
-          </div>
-          <h2 className="text-2xl md:text-3xl font-serif font-black luxury-text-shine drop-shadow-[0_2px_12px_rgba(223,186,107,0.15)]">
-            مَرْحَبَاً بِكَ يَا شَاعِرَنَا الْفَذّ!
-          </h2>
-          <p className="text-xs text-[#e8fbf0]/75 mt-1.5 leading-relaxed">
-            تمت المصادقة سحابياً بنجاح، نرجو تأكيد بيانات هويتك لمتابعة الدخول.
-          </p>
-        </div>
-
-        {/* Profile Details Container with deep emerald styling & luxury borders */}
-        <div className="p-6 rounded-2xl border border-[#dfba6b]/20 bg-[#051109]/80 backdrop-blur-xs mb-6 flex flex-col items-center gap-4 relative">
-          
-          {/* Decorative glowing green background aura */}
-          <div className="absolute inset-0 bg-emerald-500/5 rounded-2xl pointer-events-none blur-xl" />
-
-          {/* User Image Picture with shimmering golden rings */}
-          <div className="relative group z-10">
-            <div className="absolute inset-0 bg-[#dfba6b] rounded-full blur-sm opacity-60 animate-pulse" />
-            <img 
-              src={user?.photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
-              alt={user?.displayName || 'الشاعر'} 
-              referrerPolicy="no-referrer"
-              className="w-20 h-20 rounded-full border-2 border-[#dfba6b] object-cover relative z-10 shadow-lg"
-            />
-            {isUserAdmin && (
-              <div className="absolute bottom-0 right-0 z-20 bg-[#dfba6b] border border-white rounded-full p-1 shadow-md" title="المالك">
-                <Crown className="w-4 h-4 text-black" />
-              </div>
-            )}
-          </div>
-
-          {/* Name & Email */}
-          <div className="text-center z-10">
-            <h3 className="font-serif font-bold text-lg text-[#fffcf0] tracking-wide">
-              {user?.displayName || 'أديب صانع الشعر'}
-            </h3>
-            <p className="text-xs text-gray-400 font-mono mt-0.5 tracking-wider">{user?.email}</p>
-          </div>
-
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-[#dfba6b]/20 to-transparent my-1 z-10" />
-
-          {/* Plan & Usage statistics */}
-          <div className="w-full space-y-3.5 text-xs z-10 relative">
-            
-            {/* Plan row */}
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400 font-serif">الباقة الفنية:</span>
-              <span className={`px-2.5 py-1 rounded-lg font-serif font-bold flex items-center gap-1.5 border ${
-                isUserAdmin 
-                  ? 'bg-amber-500/10 border-[#dfba6b]/40 text-[#dfba6b]' 
-                  : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-              }`}>
-                {isUserAdmin ? <Crown className="w-3.5 h-3.5 text-[#dfba6b] shrink-0" /> : <Award className="w-3.5 h-3.5 shrink-0" />}
-                {getPlanLabel()}
-              </span>
-            </div>
-
-            {/* Daily limit row */}
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400 font-serif">الحد اليومي الممنوح:</span>
-              <span className="font-bold text-gray-200">{limitLabel}</span>
-            </div>
-
-            {/* Remaining Today row */}
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400 font-serif">العداد الباقي لليوم:</span>
-              <span className={`font-bold flex items-center gap-1.5 ${
-                isUserAdmin ? 'text-amber-400' : (remainingDailyUses !== 0 ? 'text-emerald-400' : 'text-red-400')
-              }`}>
-                <Gauge className="w-4 h-4 shrink-0" />
-                {remainingLabel}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Controls Container */}
-        <div className="flex flex-col gap-3.5">
-          
-          {/* Main button: Proceed to Dashboard */}
-          <div className="relative group">
-            {/* Subtle gold halo glow on hover */}
-            <div className="absolute inset-0 bg-[#dfba6b]/15 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-            
-            <button
-              onClick={onEnterPlatform}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-[#143e22] to-[#1a472a] hover:from-[#1a472a] hover:to-[#225c36] text-white font-serif font-black text-base shadow-xl active:scale-[0.98] active:translate-y-[1px] transition-all flex items-center justify-center gap-2 border border-[#dfba6b]/35 border-b-4 border-b-[#0b2814] cursor-pointer"
-              id="gateway-enter-platform-btn"
-            >
-              <Play className="w-4 h-4 shrink-0 fill-current text-amber-300" />
-              <span className="tracking-wide">الدخول إلى صومعة النظم والمنصة</span>
-            </button>
-          </div>
-
-          {/* Sign Out (Switch Account) */}
-          <button
-            onClick={onSignOut}
-            className="w-full py-2.5 rounded-xl text-xs font-serif font-bold border border-red-500/20 text-red-400 bg-red-950/15 hover:bg-red-950/30 transition-all cursor-pointer flex items-center justify-center gap-2 select-none active:scale-[0.98]"
-          >
-            <LogOut className="w-3.5 h-3.5 shrink-0" />
-            <span>تسجيل خروج (تغيير الحساب)</span>
-          </button>
-        </div>
-
-        {/* Standard Credit Footer inside card */}
-        <p className="text-[10px] text-gray-400 text-center mt-6 select-none font-sans font-medium tracking-wide">
-          اسم المطور: مصطفى محمود محمد عبد الحليم (مؤسس ومطور منصة صانع الشعر العربي)
-        </p>
-
-      </div>
-
-      {/* Subtle Developer Signature at very bottom */}
-      <div className="absolute bottom-4 text-[9px] text-[#e8fbf0]/20 font-sans pointer-events-none tracking-wider select-none">
-        منصة صانع الشعر العربي © ٢٠٢٦
-      </div>
     </div>
   );
 }

@@ -17,7 +17,7 @@ interface TurnstileWidgetProps {
   action?: string;
 }
 
-export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action }: TurnstileWidgetProps) {
+export default function TurnstileWidget({ siteKey, onVerify, isDarkMode = true, action }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action 
           if (containerRef.current) {
             const widgetId = window.turnstile.render(containerRef.current, {
               sitekey: activeSiteKey,
-              theme: isDarkMode ? 'dark' : 'light',
+              theme: 'dark',
               action: action,
               callback: (token: string) => {
                 onVerify(token);
@@ -86,15 +86,11 @@ export default function TurnstileWidget({ siteKey, onVerify, isDarkMode, action 
         }
       }
     };
-  }, [activeSiteKey, isDarkMode, action]);
+  }, [activeSiteKey, action]);
 
   if (!siteKey) {
     return (
-      <div className={`p-3 rounded-lg text-xs mb-4 border text-center leading-relaxed ${
-        isDarkMode 
-          ? 'bg-[#1a1111] border-red-950 text-red-400' 
-          : 'bg-red-50 border-red-200 text-red-700'
-      }`}>
+      <div className="p-3 rounded-lg text-xs mb-4 border text-center leading-relaxed bg-[#1a1111] border-red-950 text-red-400">
         ⚠️ <strong>تنبيه للمطور:</strong> رمز الموقع (Site Key) لـ Cloudflare Turnstile غير مهيأ في الإعدادات. يرجى تهيئة <code>TURNSTILE_SITE_KEY</code> في لوحة تحكم Cloudflare Pages ليتم تفعيل التحقق الأمني.
       </div>
     );

@@ -12,14 +12,15 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { UsersService } from './server/services/usersService';
-import { UsageLogsService } from './server/services/usageLogsService';
 import { 
   handleGeneratePoem, 
   handleLiteraryTool, 
   devLogs, 
   addDevLog 
 } from './src/backend-logic';
+
+import { UsersService } from './server/services/usersService';
+import { UsageLogsService } from './server/services/usageLogsService';
 
 import { db, isFirebaseAdminInitialized } from './server/db';
 
@@ -58,9 +59,7 @@ async function authenticateFirebaseToken(req: any, res: express.Response, next: 
   req.userPlan = 'visitor'; // default
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Check if we have IP-based plan in memory
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-    req.userPlan = userPlans.get(`ip:${ip}`) || 'visitor';
+    req.userPlan = 'visitor';
     return next();
   }
 
@@ -273,35 +272,8 @@ function trackTelemetry(req: any, type: string, extra?: { duration?: number; too
   }
 }
 
-// --- SYSTEM SUBSCRIPTION PLANS CONFIGURATION ---
-// Configurable easily from a single source of truth in the project
-export const SUBSCRIPTION_PLANS = {
-  visitor: {
-    id: 'visitor',
-    name: 'زائر',
-    price: '0 دولار',
-    limit: 10,
-    features: ['الوصول الأساسي للأدوات الأدبية', 'نظم قصائد قصيرة ومحدودة', '١٠ استخدامات يومية كحد أقصى']
-  },
-  free: {
-    id: 'free',
-    name: 'الخطة المجانية',
-    price: '0 دولار',
-    limit: 10,
-    features: ['تحليل عروض وبحور الشعر', 'تكملة القوافي والبحور المتقاطعة', 'حفظ القصائد بالأرشيف', '١٠ استخدامات يومية كحد أقصى']
-  }
-};
-
-const userPlans = new Map<string, string>(); // Maps UID or IP to subscription plan ID
-
 function getUserPlan(req: any): string {
-  if (req.userPlan) {
-    return req.userPlan;
-  }
-  if (req.user && req.user.uid) {
-    return 'free';
-  }
-  return 'visitor';
+  return 'free';
 }
 
 function getLocalLimitKey(req: any): string {
@@ -314,12 +286,10 @@ function getLocalLimitKey(req: any): string {
 }
 
 function getMaxDailyUses(req: any): number {
-  const planId = getUserPlan(req);
-  const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-  return plan ? plan.limit : SUBSCRIPTION_PLANS.visitor.limit;
+  return isUserAdmin(req) ? 99999 : 10;
 }
 
-async function checkUsageOnly(req: any): Promise<{ allowed: boolean; maxLimit: number; usedToday: number; remainingDailyUses: number }> {
+async function checkAndConsumeUsage(req: any): Promise<{ allowed: boolean; maxLimit: number; usedToday: number; remainingDailyUses: number }> {
   const isAdmin = isUserAdmin(req);
   if (isAdmin) {
     return { allowed: true, maxLimit: 99999, usedToday: 0, remainingDailyUses: 99999 };
@@ -327,6 +297,7 @@ async function checkUsageOnly(req: any): Promise<{ allowed: boolean; maxLimit: n
 
   if (req.user && req.user.uid) {
     const uid = req.user.uid;
+    // Fetch latest user state and perform daily reset check if needed
     const user = await UsersService.getOrCreateUser(uid, {
       email: req.user.email,
       name: req.user.name,
@@ -337,8 +308,8 @@ async function checkUsageOnly(req: any): Promise<{ allowed: boolean; maxLimit: n
       return { allowed: false, maxLimit: 10, usedToday: 10, remainingDailyUses: 0 };
     }
 
-    const used = user.dailyLimit - user.remainingToday;
     if (user.remainingToday <= 0) {
+      const used = user.dailyLimit - user.remainingToday;
       return {
         allowed: false,
         maxLimit: user.dailyLimit,
@@ -347,11 +318,16 @@ async function checkUsageOnly(req: any): Promise<{ allowed: boolean; maxLimit: n
       };
     }
 
+    // Atomically decrement remainingToday and save user doc
+    await UsersService.consumeUsage(uid);
+    // Increment usage_logs record and return total requests used today
+    const usedToday = await UsageLogsService.incrementUsage(uid);
+
     return {
       allowed: true,
       maxLimit: user.dailyLimit,
-      usedToday: used,
-      remainingDailyUses: user.remainingToday
+      usedToday,
+      remainingDailyUses: user.remainingToday - 1
     };
   } else {
     // Visitor fallback (IP-based)
@@ -363,46 +339,12 @@ async function checkUsageOnly(req: any): Promise<{ allowed: boolean; maxLimit: n
       return { allowed: false, maxLimit, usedToday: currentCount, remainingDailyUses: 0 };
     }
 
+    localDailyLimits.set(key, currentCount + 1);
     return {
       allowed: true,
       maxLimit,
-      usedToday: currentCount,
-      remainingDailyUses: Math.max(0, maxLimit - currentCount)
-    };
-  }
-}
-
-async function consumeUsageOnSuccess(req: any): Promise<{ maxLimit: number; usedToday: number; remainingDailyUses: number }> {
-  const isAdmin = isUserAdmin(req);
-  if (isAdmin) {
-    return { maxLimit: 99999, usedToday: 0, remainingDailyUses: 99999 };
-  }
-
-  if (req.user && req.user.uid) {
-    const uid = req.user.uid;
-    await UsersService.consumeUsage(uid);
-    const usedToday = await UsageLogsService.incrementUsage(uid);
-    const user = await UsersService.getOrCreateUser(uid);
-    const maxLimit = user ? user.dailyLimit : 10;
-    const remainingDailyUses = user ? user.remainingToday : 0;
-
-    return {
-      maxLimit,
-      usedToday,
-      remainingDailyUses
-    };
-  } else {
-    // Visitor fallback (IP-based)
-    const maxLimit = getMaxDailyUses(req);
-    const key = getLocalLimitKey(req);
-    const currentCount = localDailyLimits.get(key) || 0;
-    const nextCount = currentCount + 1;
-    localDailyLimits.set(key, nextCount);
-
-    return {
-      maxLimit,
-      usedToday: nextCount,
-      remainingDailyUses: Math.max(0, maxLimit - nextCount)
+      usedToday: currentCount + 1,
+      remainingDailyUses: Math.max(0, maxLimit - (currentCount + 1))
     };
   }
 }
@@ -588,50 +530,6 @@ app.get('/api/config', async (req: any, res) => {
   });
 });
 
-// Get user subscription plan info
-app.get('/api/user/plan', async (req: any, res) => {
-  const planId = getUserPlan(req);
-  const isAdmin = isUserAdmin(req);
-  let remainingToday = 10;
-  let maxLimit = 10;
-  let usedToday = 0;
-
-  if (req.user && req.user.uid) {
-    const user = await UsersService.getOrCreateUser(req.user.uid, {
-      email: req.user.email,
-      name: req.user.name,
-      picture: req.user.picture
-    });
-    if (user) {
-      maxLimit = user.dailyLimit;
-      remainingToday = user.remainingToday;
-      usedToday = user.dailyLimit - user.remainingToday;
-    }
-  } else {
-    // Visitor fallback
-    const key = getLocalLimitKey(req);
-    const currentCount = localDailyLimits.get(key) || 0;
-    maxLimit = getMaxDailyUses(req);
-    remainingToday = Math.max(0, maxLimit - currentCount);
-    usedToday = currentCount;
-  }
-
-  res.json({
-    planId,
-    plan: SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS],
-    maxLimit: isAdmin ? 99999 : maxLimit,
-    usedToday: isAdmin ? 0 : usedToday,
-    remainingDailyUses: isAdmin ? 99999 : remainingToday,
-    allPlans: SUBSCRIPTION_PLANS,
-    role: isAdmin ? 'admin' : 'user'
-  });
-});
-
-// Update or Upgrade user plan (Deprecated)
-app.post('/api/user/plan', async (req: any, res) => {
-  res.status(400).json({ error: 'الاشتراكات والمدفوعات تم إيقافها، المنصة الآن مجانية بالكامل للجميع.' });
-});
-
 // Developer logs endpoint
 app.get('/api/dev-logs', requireAuth, (req: any, res) => {
   if (!isUserAdmin(req)) {
@@ -808,89 +706,6 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res) => {
   }
 });
 
-// Admin Subscriptions Stats Endpoint
-app.get('/api/admin/subscription-stats', requireAuth, async (req: any, res) => {
-  try {
-    // Check Authorization
-    if (!isUserAdmin(req)) {
-      return res.status(403).json({ error: 'عذراً، غير مصرح لك بالوصول إلى هذه البيانات الإدارية الحساسة.' });
-    }
-
-    let realUsers: any[] = [];
-    if (db) {
-      try {
-        const snapshot = await db.collection('users').get();
-        snapshot.forEach((doc: any) => {
-          const data = doc.data();
-          realUsers.push({
-            id: doc.id,
-            email: data.email || 'مستخدم مسجل',
-            planId: data.planId || 'free',
-            subscriptionStatus: data.subscriptionStatus || 'active',
-            updatedAt: data.updatedAt || new Date().toISOString(),
-            paymentProvider: data.paymentProvider || null,
-            paymentTransactionId: data.paymentTransactionId || null
-          });
-        });
-      } catch (err) {
-        console.error('[Firestore Error in Admin subscription-stats]:', err);
-      }
-    }
-
-    // Compute aggregations
-    let totalSubscribers = 0;
-    let proSubscribers = 0; // silver
-    let premiumSubscribers = 0; // gold
-    let expiredSubscriptions = 0;
-    let canceledSubscriptions = 0;
-
-    const latestPayments: any[] = [];
-
-    realUsers.forEach(u => {
-      const isSilver = u.planId === 'silver';
-      const isGold = u.planId === 'gold';
-      const isActive = u.subscriptionStatus === 'active' || u.subscriptionStatus === 'trialing';
-
-      if (isActive && (isSilver || isGold)) {
-        totalSubscribers++;
-        if (isSilver) proSubscribers++;
-        if (isGold) premiumSubscribers++;
-
-        latestPayments.push({
-          id: `pay_${u.id}`,
-          email: u.email,
-          planId: u.planId,
-          amount: isSilver ? 20 : 80,
-          date: u.updatedAt,
-          status: 'successful'
-        });
-      } else if (u.subscriptionStatus === 'expired' || u.subscriptionStatus === 'incomplete_expired' || u.subscriptionStatus === 'past_due') {
-        expiredSubscriptions++;
-      } else if (u.subscriptionStatus === 'canceled' || u.subscriptionStatus === 'cancelled') {
-        canceledSubscriptions++;
-      }
-    });
-
-    const monthlyRevenue = (proSubscribers * 20) + (premiumSubscribers * 80);
-
-    latestPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    res.json({
-      totalSubscribers,
-      proSubscribers,
-      premiumSubscribers,
-      monthlyRevenue,
-      expiredSubscriptions,
-      canceledSubscriptions,
-      latestPayments: latestPayments.slice(0, 10),
-      allUsers: realUsers
-    });
-  } catch (err: any) {
-    console.error('[Admin Subscription Stats API] Error:', err);
-    res.status(500).json({ error: 'حدث خطأ غير متوقع أثناء تجميع إحصائيات الاشتراكات.' });
-  }
-});
-
 // Poem generation endpoint
 app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
   try {
@@ -915,8 +730,8 @@ app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
       });
     }
 
-    // Call checkUsageOnly before AI generation
-    const usageCheck = await checkUsageOnly(req);
+    // Call checkAndConsumeUsage before AI generation
+    const usageCheck = await checkAndConsumeUsage(req);
     if (!usageCheck.allowed) {
       trackTelemetry(req, 'reject_daily');
       return res.status(429).json({
@@ -930,15 +745,12 @@ app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
     const result = await handleGeneratePoem(req.body, aiInstance);
     const duration = Date.now() - startGemini;
 
-    // Consume only on successful response
-    const consumed = await consumeUsageOnSuccess(req);
-
     // Track successful poem generation
     trackTelemetry(req, 'success_poem', { duration });
 
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: consumed.remainingDailyUses }
-      : { result, remainingDailyUses: consumed.remainingDailyUses };
+      ? { ...result, remainingDailyUses: usageCheck.remainingDailyUses }
+      : { result, remainingDailyUses: usageCheck.remainingDailyUses };
 
     return res.json(responseData);
   } catch (err: any) {
@@ -981,8 +793,8 @@ app.post('/api/literary-tool', requireAuth, async (req: any, res) => {
       });
     }
 
-    // Call checkUsageOnly before AI generation
-    const usageCheck = await checkUsageOnly(req);
+    // Call checkAndConsumeUsage before AI generation
+    const usageCheck = await checkAndConsumeUsage(req);
     if (!usageCheck.allowed) {
       trackTelemetry(req, 'reject_daily');
       return res.status(429).json({
@@ -996,15 +808,12 @@ app.post('/api/literary-tool', requireAuth, async (req: any, res) => {
     const result = await handleLiteraryTool(toolAction, payload, aiInstance);
     const duration = Date.now() - startGemini;
 
-    // Consume only on successful response
-    const consumed = await consumeUsageOnSuccess(req);
-
     // Track successful tool execution
     trackTelemetry(req, 'success_tool', { duration, toolAction });
 
     const responseData = typeof result === 'object' && result !== null
-      ? { ...result, remainingDailyUses: consumed.remainingDailyUses }
-      : { result, remainingDailyUses: consumed.remainingDailyUses };
+      ? { ...result, remainingDailyUses: usageCheck.remainingDailyUses }
+      : { result, remainingDailyUses: usageCheck.remainingDailyUses };
 
     return res.json(responseData);
   } catch (err: any) {

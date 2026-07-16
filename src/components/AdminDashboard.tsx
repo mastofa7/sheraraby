@@ -58,21 +58,12 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
   };
 
   const [activeTab, setActiveTab] = useState<'server' | 'diwans'>('server');
+
   const [allDiwans, setAllDiwans] = useState<any[]>([]);
   const [loadingDiwans, setLoadingDiwans] = useState<boolean>(false);
   const [errorDiwans, setErrorDiwans] = useState<string | null>(null);
   const [diwanSearch, setDiwanSearch] = useState<string>('');
   const [selectedAdminPoem, setSelectedAdminPoem] = useState<any | null>(null);
-
-  // Deprecated Subscription states to satisfy compiler on removed tab
-  const loadingSub = false;
-  const errorSub = null;
-  const fetchSubStats = () => {};
-  const subStats: any = null;
-  const searchTerm = '';
-  const setSearchTerm = (val: string) => {};
-  const planFilter = 'all';
-  const setPlanFilter = (val: string) => {};
 
   const fetchAllDiwans = async () => {
     setLoadingDiwans(true);
@@ -247,8 +238,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
           {/* Grid 1: Basic Statistics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Users Today */}
-        <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-          isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`border rounded-2xl p-5 shadow-md relative overflow-hidden transition-all hover:scale-[1.02] ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl" />
           <div className="flex justify-between items-start mb-3">
@@ -266,8 +257,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
 
         {/* Card 2: Registered Users */}
-        <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-          isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`border rounded-2xl p-5 shadow-md relative overflow-hidden transition-all hover:scale-[1.02] ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl" />
           <div className="flex justify-between items-start mb-3">
@@ -285,8 +276,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
 
         {/* Card 3: Requests Today */}
-        <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-          isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`border rounded-2xl p-5 shadow-md relative overflow-hidden transition-all hover:scale-[1.02] ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl" />
           <div className="flex justify-between items-start mb-3">
@@ -304,8 +295,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
 
         {/* Card 4: Generated Poems */}
-        <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-          isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`border rounded-2xl p-5 shadow-md relative overflow-hidden transition-all hover:scale-[1.02] ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/5 rounded-full blur-xl" />
           <div className="flex justify-between items-start mb-3">
@@ -323,8 +314,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
 
         {/* Card 5: Tool Usages */}
-        <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-          isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`border rounded-2xl p-5 shadow-md relative overflow-hidden transition-all hover:scale-[1.02] ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl" />
           <div className="flex justify-between items-start mb-3">
@@ -345,8 +336,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
       {/* Grid 2: Global Limit and Response Time Gauge */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Global Limit Card (70%) */}
-        <div className={`lg:col-span-8 border rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col justify-between ${
-          isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`lg:col-span-8 border rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -403,8 +394,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
 
         {/* Response Time Gauge Card (30%) */}
-        <div className={`lg:col-span-4 border rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col justify-between text-center ${
-          isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`lg:col-span-4 border rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between text-center ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div>
             <h3 className={`font-serif font-black text-base flex items-center justify-center gap-1.5 mb-1 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
@@ -447,8 +438,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
       </div>
 
       {/* Grid 3: Live Service Status (4 Indicator LEDs) */}
-      <div className={`border rounded-2xl p-6 shadow-xs ${
-        isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+      <div className={`border rounded-2xl p-6 shadow-md ${
+        isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
       }`}>
         <h3 className={`font-serif font-black text-lg flex items-center gap-1.5 mb-4 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
           <Server className="w-5 h-5 text-[#b58d3d]" /> بوابات الخدمات وحالة الاتصال بالبنية التحتية
@@ -552,8 +543,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
       </div>
 
       {/* Grid 4: Rejected Requests Breakdown */}
-      <div className={`border rounded-2xl p-6 shadow-xs relative overflow-hidden ${
-        isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+      <div className={`border rounded-2xl p-6 shadow-md relative overflow-hidden ${
+        isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
       }`}>
         <h3 className={`font-serif font-black text-lg flex items-center gap-1.5 mb-2 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
           <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" /> تفصيل وتتبع الطلبات المرفوضة حماية للأنظمة
@@ -608,8 +599,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
       {/* Grid 5: Professional Charts (24h Traffic & Most Used Tools) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Chart 1: 24h Traffic Area Chart (60%) */}
-        <div className={`lg:col-span-7 border rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col ${
-          isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`lg:col-span-7 border rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div>
             <h3 className={`font-serif font-black text-lg flex items-center gap-1.5 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
@@ -740,8 +731,8 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </div>
 
         {/* Chart 2: Most Used Tools Horizontal Bar Chart (40%) */}
-        <div className={`lg:col-span-5 border rounded-2xl p-6 shadow-xs relative overflow-hidden flex flex-col justify-between ${
-          isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
+        <div className={`lg:col-span-5 border rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between ${
+          isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-white' : 'bg-white border-[#b58d3d]/25 text-gray-800'
         }`}>
           <div>
             <h3 className={`font-serif font-black text-lg flex items-center gap-1.5 ${isDarkMode ? 'text-[#dfba6b]' : 'text-royal-800'}`}>
@@ -784,278 +775,12 @@ export default function AdminDashboard({ isDarkMode, onBackToStudio }: AdminDash
         </>
       )}
 
-      {false && (
-        <div className="space-y-6">
-          {loadingSub ? (
-            <div className="p-12 text-center flex flex-col items-center justify-center gap-4">
-              <div className="w-8 h-8 rounded-full border-4 border-t-transparent border-[#dfba6b] animate-spin" />
-              <p className="font-serif text-sm text-gray-400 animate-pulse">جاري تحميل بيانات الاشتراكات وتحليل العمليات من Paymob و Firestore...</p>
-            </div>
-          ) : errorSub ? (
-            <div className={`p-6 rounded-xl border text-center ${isDarkMode ? 'bg-[#1a0f10] border-red-900/30 text-red-300' : 'bg-red-50 border-red-200 text-red-900'}`}>
-              <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2 animate-bounce" />
-              <h4 className="font-serif font-black text-base">عثرة أثناء جلب الإحصائيات</h4>
-              <p className="text-xs mt-1">{errorSub}</p>
-              <button onClick={fetchSubStats} className="mt-3 px-4 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">إعادة المحاولة</button>
-            </div>
-          ) : !subStats ? (
-            <p className="text-center text-sm text-gray-500">لا تتوفر بيانات حالياً.</p>
-          ) : (
-            <>
-              {/* Bento Grid containing aggregated metrics */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Metric 1: Total Subscribers */}
-                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
-                }`}>
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl" />
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-serif font-bold text-gray-400">إجمالي المشتركين النشطين</span>
-                    <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-600">
-                      <Users className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-serif font-black text-emerald-600 dark:text-emerald-400">
-                    {subStats.totalSubscribers} <span className="text-xs font-sans text-gray-400 font-normal">مشترك</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500" /> نشطون عبر بوابة Paymob
-                  </p>
-                </div>
 
-                {/* Metric 2: Pro/Silver Subscribers */}
-                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
-                }`}>
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl" />
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-serif font-bold text-gray-400">الخطة الاحترافية (Pro)</span>
-                    <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-serif font-black text-blue-500 dark:text-blue-400">
-                    {subStats.proSubscribers} <span className="text-xs font-sans text-gray-400 font-normal">مشترك</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-2">
-                    بقيمة <span className="font-bold text-blue-500">$20</span> شهرياً للمشترك
-                  </p>
-                </div>
-
-                {/* Metric 3: Premium/Gold Subscribers */}
-                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
-                }`}>
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl" />
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-serif font-bold text-gray-400">الخطة المميزة (Premium)</span>
-                    <div className="p-2 bg-amber-500/10 rounded-xl text-[#dfba6b]">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-serif font-black text-amber-500 dark:text-[#dfba6b]">
-                    {subStats.premiumSubscribers} <span className="text-xs font-sans text-gray-400 font-normal">مشترك</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-2">
-                    بقيمة <span className="font-bold text-amber-500">$80</span> شهرياً للمشترك
-                  </p>
-                </div>
-
-                {/* Metric 4: Expected Monthly Revenue */}
-                <div className={`border rounded-2xl p-5 shadow-xs relative overflow-hidden transition-all hover:scale-[1.02] ${
-                  isDarkMode ? 'bg-[#102216] border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
-                }`}>
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/5 rounded-full blur-xl" />
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-serif font-bold text-gray-400">الإيراد الشهري المتوقع (MRR)</span>
-                    <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
-                      <DollarSign className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-serif font-black text-purple-600 dark:text-purple-400">
-                    ${subStats.monthlyRevenue} <span className="text-xs font-sans text-gray-400 font-normal">دولار</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3 text-emerald-500" /> معدل الدخل السنوي المتوقع: ${(subStats.monthlyRevenue * 12)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status boxes for canceled and expired */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className={`p-4 rounded-xl border flex items-center justify-between ${
-                  isDarkMode ? 'bg-[#15120c] border-[#dfba6b]/10' : 'bg-amber-50/50 border-amber-200/50'
-                }`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#dfba6b]/10 flex items-center justify-center text-[#dfba6b]">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-400 block font-serif">الاشتراكات المنتهية</span>
-                      <span className="text-lg font-serif font-black text-[#dfba6b]">{subStats.expiredSubscriptions}</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-serif">عادت تلقائياً للخطة المجانية</span>
-                </div>
-
-                <div className={`p-4 rounded-xl border flex items-center justify-between ${
-                  isDarkMode ? 'bg-[#1a0f10] border-red-950/40' : 'bg-red-50/50 border-red-200/50'
-                }`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
-                      <XCircle className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-400 block font-serif">الاشتراكات الملغاة</span>
-                      <span className="text-lg font-serif font-black text-red-600 dark:text-red-400">{subStats.canceledSubscriptions}</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-serif">أوقف المستخدم التجديد التلقائي</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Side: Last Payments List */}
-                <div className={`lg:col-span-1 border rounded-2xl p-5 shadow-xs ${
-                  isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
-                }`}>
-                  <h3 className="font-serif font-black text-base flex items-center gap-1.5 mb-4">
-                    <DollarSign className="w-4 h-4 text-emerald-500" /> آخر عمليات الدفع الناجحة
-                  </h3>
-                  <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                    {subStats.latestPayments && subStats.latestPayments.length > 0 ? (
-                      subStats.latestPayments.map((pay: any) => (
-                        <div key={pay.id} className="p-3 rounded-xl bg-gray-50 dark:bg-emerald-950/15 border border-gray-100 dark:border-white/5 flex flex-col gap-1 text-xs">
-                          <div className="flex justify-between items-center">
-                            <span className="font-semibold text-gray-400 truncate max-w-[130px] font-sans" title={pay.email}>
-                              {pay.email}
-                            </span>
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-serif text-sm">
-                              +${pay.amount}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-[10px] text-gray-500">
-                            <span>خطة: {pay.planId === 'gold' ? 'الذهبية' : 'الفضية'}</span>
-                            <span className="font-sans">{new Date(pay.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-center text-xs text-gray-500 py-6">لا توجد دفعات مسجلة بعد.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Side: Subscribers List with Search & Filtering */}
-                <div className={`lg:col-span-2 border rounded-2xl p-5 shadow-xs flex flex-col justify-between ${
-                  isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15 text-white' : 'bg-white border-manuscript-border text-gray-800'
-                }`}>
-                  <div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                      <h3 className="font-serif font-black text-base flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-[#b58d3d]" /> قائمة الحسابات والاشتراكات
-                      </h3>
-                      {/* Search & Filters */}
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <div className="relative flex-1 sm:w-48">
-                          <input
-                            type="text"
-                            placeholder="ابحث بالبريد الإلكتروني..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full text-xs p-2 pr-7 rounded-lg bg-gray-50 dark:bg-[#0a120d] border border-gray-200 dark:border-white/10 outline-none focus:ring-1 focus:ring-emerald-500 text-right"
-                          />
-                          <Search className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-2.5" />
-                        </div>
-                        <select
-                          value={planFilter}
-                          onChange={(e) => setPlanFilter(e.target.value)}
-                          className="text-xs p-2 rounded-lg bg-gray-50 dark:bg-[#0a120d] border border-gray-200 dark:border-white/10 outline-none cursor-pointer"
-                        >
-                          <option value="all">كل الخطط</option>
-                          <option value="member">العضو (100 استخدام)</option>
-                          <option value="premium">المميزة (500 استخدام)</option>
-                          <option value="silver">الفضية (Pro)</option>
-                          <option value="gold">الذهبية (Premium)</option>
-                          <option value="free">المجانية</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-right text-xs">
-                        <thead>
-                          <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400">
-                            <th className="pb-2 font-semibold">البريد الإلكتروني</th>
-                            <th className="pb-2 font-semibold">الخطة</th>
-                            <th className="pb-2 font-semibold">حالة الاشتراك</th>
-                            <th className="pb-2 font-semibold">معرف المعاملة (Paymob)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-white/5">
-                          {subStats.allUsers && subStats.allUsers.length > 0 ? (
-                            subStats.allUsers
-                              .filter((u: any) => {
-                                const matchesSearch = u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-                                const matchesFilter = planFilter === 'all' || u.planId === planFilter;
-                                return matchesSearch && matchesFilter;
-                              })
-                              .map((userRow: any) => {
-                                const isSilver = userRow.planId === 'silver' || userRow.planId === 'member';
-                                const isGold = userRow.planId === 'gold' || userRow.planId === 'premium';
-                                const isActive = userRow.subscriptionStatus === 'active' || userRow.subscriptionStatus === 'trialing';
-
-                                return (
-                                  <tr key={userRow.id} className="hover:bg-gray-50 dark:hover:bg-emerald-950/5">
-                                    <td className="py-3 font-semibold font-sans truncate max-w-[140px]" title={userRow.email}>
-                                      {userRow.email}
-                                    </td>
-                                    <td className="py-3">
-                                      {isGold ? (
-                                        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-[#dfba6b] font-bold">ذهبية</span>
-                                      ) : isSilver ? (
-                                        <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 font-bold">فضية</span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded bg-gray-500/10 text-gray-400">مجانية</span>
-                                      )}
-                                    </td>
-                                    <td className="py-3">
-                                      {isActive ? (
-                                        <span className="text-emerald-500 font-bold">● نشط</span>
-                                      ) : userRow.subscriptionStatus === 'canceled' ? (
-                                        <span className="text-red-500 font-semibold">● ملغى</span>
-                                      ) : userRow.subscriptionStatus === 'expired' ? (
-                                        <span className="text-[#dfba6b] font-semibold">● منتهٍ</span>
-                                      ) : (
-                                        <span className="text-gray-400">—</span>
-                                      )}
-                                    </td>
-                                    <td className="py-3 font-mono text-[10px] text-gray-400">
-                                      {userRow.paymentTransactionId || 'لا يوجد'}
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                          ) : (
-                            <tr>
-                              <td colSpan={4} className="py-6 text-center text-gray-500">لا يوجد حسابات مسجلة مطابقة للبحث.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {activeTab === 'diwans' && (
         <div className="space-y-6">
-          <div className={`border rounded-2xl p-6 shadow-xs ${
-            isDarkMode ? 'bg-[#102216]/50 border-[#dfba6b]/15' : 'bg-white border-manuscript-border'
+          <div className={`border rounded-2xl p-6 shadow-md ${
+            isDarkMode ? 'bg-[#102216]/65 border-[#dfba6b]/20 text-[#e8f5ee]' : 'bg-white border-[#b58d3d]/25 text-gray-800'
           }`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
               <div>

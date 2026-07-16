@@ -481,9 +481,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
         <div className="lg:col-span-5 space-y-6">
           {/* Phase 1: Paste original poem */}
           {!analysisResult && (
-            <div className={`p-5 rounded-3xl border shadow-sm ${
-              isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-            }`}>
+            <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-5 h-5 bg-[#8b1d2e]/10 text-[#8b1d2e] text-xs font-bold rounded-full flex items-center justify-center">١</span>
                 <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b]">ألصق أو اكتب القصيدة الأصلية كاملة</h3>
@@ -498,11 +496,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
                 onChange={(e) => setOriginalPoemText(e.target.value)}
                 placeholder="ألصق الأبيات هنا... صدر وعجز أو أبياتاً كاملة متتالية."
                 rows={10}
-                className={`w-full p-4 rounded-2xl text-sm font-serif leading-relaxed resize-y border ${
-                  isDarkMode 
-                    ? 'bg-[#0a120d] border-white/10 text-[#eefaf3] focus:border-[#dfba6b]/50' 
-                    : 'bg-amber-50/10 border-manuscript-border text-gray-800 focus:border-[#1a472a]'
-                } focus:outline-none focus:ring-1 focus:ring-amber-500`}
+                className="w-full p-4 rounded-2xl text-sm font-serif leading-relaxed resize-y border bg-[#0a120d] border-[#dfba6b]/20 text-[#eefaf3] focus:border-[#dfba6b]/50 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
 
               {analysisError && (
@@ -573,9 +567,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
           {analysisResult && (
             <div className="space-y-6 animate-fade-in">
               {/* Report of Analysis */}
-              <div className={`p-5 rounded-3xl border shadow-sm ${
-                isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-              }`}>
+              <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
                 <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b] mb-4 pb-2 border-b border-gray-100 dark:border-white/5 flex items-center gap-2">
                   <Award className="w-4 h-4 text-[#8b1d2e]" />
                   الهوية العروضية للقصيدة الأصلية
@@ -614,9 +606,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
               </div>
 
               {/* Set simulated Poet & Meaning input */}
-              <div className={`p-5 rounded-3xl border shadow-sm ${
-                isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-              }`}>
+              <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
                 <div className="flex items-center gap-2 mb-4">
                   <span className="w-5 h-5 bg-[#8b1d2e]/10 text-[#8b1d2e] text-xs font-bold rounded-full flex items-center justify-center">٢</span>
                   <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b]">معالم وأفكار المعارضة</h3>
@@ -632,9 +622,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
                       value={manualPoet}
                       onChange={(e) => setManualPoet(e.target.value)}
                       placeholder="امرؤ القيس، المتنبي، شوقي..."
-                      className={`w-full p-3 rounded-xl text-xs border ${
-                        isDarkMode ? 'bg-[#0a120d] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'
-                      } focus:outline-none focus:border-[#1a472a]`}
+                      className="w-full p-3 rounded-xl text-xs border bg-[#0a120d] border-[#dfba6b]/20 text-[#eefaf3] focus:outline-none focus:border-[#dfba6b]/50"
                     />
                     <p className="text-[10px] text-gray-400 mt-1">يحاول النظام مضاهاة أسلوب هذا الشاعر وصوره وروح معانيه في المعارضة.</p>
                   </div>
@@ -648,9 +636,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
                       onChange={(e) => setNewMeanings(e.target.value)}
                       placeholder="اكتب المعاني أو الأفكار أو المناسبة التي تريد نظم معارضتك عنها... (مثال: فخر بحكمة الأجداد، أو غزل عفيف بليغ، أو رثاء للمدن والممالك)."
                       rows={4}
-                      className={`w-full p-3.5 rounded-xl text-xs resize-none border ${
-                        isDarkMode ? 'bg-[#0a120d] border-white/10 text-[#eefaf3]' : 'bg-amber-50/10 border-gray-200 text-gray-800'
-                      } focus:outline-none focus:border-[#1a472a]`}
+                      className="w-full p-3.5 rounded-xl text-xs resize-none border bg-[#0a120d] border-[#dfba6b]/20 text-[#eefaf3] focus:outline-none focus:border-[#dfba6b]/50"
                     />
                   </div>
 
@@ -738,9 +724,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
         <div className="lg:col-span-7">
           {/* Welcome Screen before Generation */}
           {!generating && !opposedPoem && (
-            <div className={`h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed ${
-              isDarkMode ? 'border-white/10 text-gray-400 bg-white/1' : 'border-manuscript-border text-gray-500 bg-amber-50/5'
-            }`}>
+            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed border-[#dfba6b]/25 bg-[#09140d]/70 text-gray-300">
               <div className="w-16 h-16 rounded-full bg-amber-500/5 border border-[#b58d3d]/20 flex items-center justify-center mb-4 text-[#b58d3d]">
                 <Feather className="w-8 h-8" />
               </div>
@@ -753,9 +737,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
 
           {/* Loading Animation during Generation */}
           {generating && (
-            <div className={`h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed ${
-              isDarkMode ? 'border-white/10 text-gray-400' : 'border-[#b58d3d]/30 text-gray-600 bg-[#fdfbf7]'
-            }`}>
+            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed border-[#dfba6b]/25 bg-[#09140d]/70 text-gray-300">
               <div className="relative mb-6">
                 <RefreshCw className="w-12 h-12 text-[#8b1d2e] animate-spin" />
                 <Sparkles className="w-5 h-5 text-amber-500 absolute top-0 right-0 animate-bounce" />
@@ -774,7 +756,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
           {opposedPoem && (
             <div className="space-y-6 animate-fade-in">
               {/* Action Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 dark:bg-[#102216]/90 p-4 rounded-2xl border border-manuscript-border dark:border-[#dfba6b]/20 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#09140d]/90 p-4 rounded-2xl border border-[#dfba6b]/25 shadow-md text-[#eefaf3]">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
                   <span className="font-bold text-emerald-700">اكتمل نظم المعارضة بنجاح!</span>
@@ -824,7 +806,7 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
               </div>
 
               {/* The Manuscript Paper Display */}
-              <div className="w-full bg-[#fdfbf7] dark:bg-[#0c1610] rounded-3xl border border-[#b58d3d]/30 shadow-lg overflow-hidden relative">
+              <div className="w-full bg-[#0c1610] rounded-3xl border border-[#dfba6b]/35 shadow-lg overflow-hidden relative">
                 {/* Vintage Watermark */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #b58d3d 1px, transparent 0)', backgroundSize: '24px 24px' }} />
                 
@@ -881,10 +863,8 @@ export default function PoeticOpposition({ isDarkMode, turnstileSiteKey, onSaveP
 
               {/* Literary Explanation box */}
               {opposedPoem.explanation && (
-                <div className={`p-5 rounded-3xl border shadow-sm ${
-                  isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-                }`}>
-                  <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b] mb-3 pb-2 border-b border-gray-100 dark:border-white/5 flex items-center gap-2">
+                <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
+                  <h3 className="font-serif font-black text-sm text-[#dfba6b] mb-3 pb-2 border-b border-[#dfba6b]/15 flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#8b1d2e]" />
                     التقرير النقدي والتحليل الأدبي واللغوي
                   </h3>

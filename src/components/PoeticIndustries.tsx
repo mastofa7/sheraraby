@@ -488,9 +488,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
   return (
     <div className="space-y-6">
       {/* Tab Header Banner */}
-      <div className={`p-6 rounded-3xl border relative overflow-hidden ${
-        isDarkMode ? 'bg-[#0f1d14] border-[#dfba6b]/20 text-white' : 'bg-[#fdfbf7] border-[#b58d3d]/30 text-gray-800'
-      }`}>
+      <div className="p-6 rounded-3xl border border-[#dfba6b]/35 relative overflow-hidden bg-[#09140d]/90 backdrop-blur-md text-[#eefaf3]">
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#dfba6b]/5 to-transparent pointer-events-none" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -515,13 +513,13 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
 
       {/* Sub tabs selectors */}
       {!result && !generating && (
-        <div className="flex gap-2 max-w-md mx-auto bg-gray-100 dark:bg-[#0a120d] p-1.5 rounded-2xl border border-gray-200/50 dark:border-white/5">
+        <div className="flex gap-2 max-w-md mx-auto bg-[#0a120d] p-1.5 rounded-2xl border border-[#dfba6b]/20">
           <button
             onClick={() => setIndustryType('takhmees')}
             className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-center ${
               industryType === 'takhmees'
-                ? 'bg-white dark:bg-[#1a472a] text-[#8b1d2e] dark:text-[#dfba6b] shadow-xs'
-                : 'text-gray-500 hover:text-gray-800'
+                ? 'bg-[#1a472a] text-[#dfba6b] border border-[#dfba6b]/30 shadow-md'
+                : 'text-gray-400 hover:text-[#dfba6b]'
             }`}
           >
             التخميس
@@ -530,8 +528,8 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
             onClick={() => setIndustryType('tasbeeq')}
             className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-center ${
               industryType === 'tasbeeq'
-                ? 'bg-white dark:bg-[#1a472a] text-[#8b1d2e] dark:text-[#dfba6b] shadow-xs'
-                : 'text-gray-500 hover:text-gray-800'
+                ? 'bg-[#1a472a] text-[#dfba6b] border border-[#dfba6b]/30 shadow-md'
+                : 'text-gray-400 hover:text-[#dfba6b]'
             }`}
           >
             التسبيع
@@ -540,8 +538,8 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
             onClick={() => setIndustryType('tashteer')}
             className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-center ${
               industryType === 'tashteer'
-                ? 'bg-white dark:bg-[#1a472a] text-[#8b1d2e] dark:text-[#dfba6b] shadow-xs'
-                : 'text-gray-500 hover:text-gray-800'
+                ? 'bg-[#1a472a] text-[#dfba6b] border border-[#dfba6b]/30 shadow-md'
+                : 'text-gray-400 hover:text-[#dfba6b]'
             }`}
           >
             التشطير
@@ -553,9 +551,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
         {/* Form panel Column */}
         <div className="lg:col-span-5 space-y-6">
           {!result && (
-            <div className={`p-5 rounded-3xl border shadow-sm ${
-              isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-            }`}>
+            <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-5 h-5 bg-[#8b1d2e]/10 text-[#8b1d2e] text-xs font-bold rounded-full flex items-center justify-center">١</span>
                 <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b]">القصيدة الأم للتطبيق</h3>
@@ -579,11 +575,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
                 onChange={(e) => setOriginalPoemText(e.target.value)}
                 placeholder="ألصق الأبيات الأصلية هنا... ندعم القصائد الطويلة حتى ١٠٠ بيت."
                 rows={12}
-                className={`w-full p-4 rounded-2xl text-sm font-serif leading-relaxed resize-y border ${
-                  isDarkMode 
-                    ? 'bg-[#0a120d] border-white/10 text-[#eefaf3] focus:border-[#dfba6b]/50' 
-                    : 'bg-amber-50/10 border-manuscript-border text-gray-800 focus:border-[#1a472a]'
-                } focus:outline-none focus:ring-1 focus:ring-amber-500`}
+                className="w-full p-4 rounded-2xl text-sm font-serif leading-relaxed resize-y border bg-[#0a120d] border-[#dfba6b]/20 text-[#eefaf3] focus:border-[#dfba6b]/50 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
 
               {error && (
@@ -652,10 +644,8 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
 
           {/* Report section showing after success */}
           {result && (
-            <div className={`p-5 rounded-3xl border shadow-sm ${
-              isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-            }`}>
-              <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b] mb-4 pb-2 border-b border-gray-100 dark:border-white/5 flex items-center gap-2">
+            <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
+              <h3 className="font-serif font-black text-sm text-[#dfba6b] mb-4 pb-2 border-b border-[#dfba6b]/15 flex items-center gap-2">
                 <Award className="w-4 h-4 text-[#8b1d2e]" />
                 تقرير النظم والصناعة
               </h3>
@@ -691,9 +681,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
         <div className="lg:col-span-7">
           {/* Default view */}
           {!generating && !result && (
-            <div className={`h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed ${
-              isDarkMode ? 'border-white/10 text-gray-400' : 'border-manuscript-border text-gray-500 bg-amber-50/5'
-            }`}>
+            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed border-[#dfba6b]/25 bg-[#09140d]/70 text-gray-300">
               <div className="w-16 h-16 rounded-full bg-amber-500/5 border border-[#b58d3d]/20 flex items-center justify-center mb-4 text-[#b58d3d]">
                 <Layers2 className="w-8 h-8" />
               </div>
@@ -706,9 +694,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
 
           {/* Loading view */}
           {generating && (
-            <div className={`h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed ${
-              isDarkMode ? 'border-white/10 text-gray-400' : 'border-[#b58d3d]/30 text-gray-600 bg-[#fdfbf7]'
-            }`}>
+            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed border-[#dfba6b]/25 bg-[#09140d]/70 text-gray-300">
               <div className="relative mb-6">
                 <RefreshCw className="w-12 h-12 text-[#8b1d2e] animate-spin" />
                 <Sparkles className="w-5 h-5 text-amber-500 absolute top-0 right-0" />
@@ -727,7 +713,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
           {result && (
             <div className="space-y-6 animate-fade-in">
               {/* Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 dark:bg-[#102216]/90 p-4 rounded-2xl border border-manuscript-border dark:border-[#dfba6b]/20 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#09140d]/90 p-4 rounded-2xl border border-[#dfba6b]/20 shadow-md text-[#eefaf3]">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
                   <span className="font-bold text-emerald-700">اكتمل صياغة الـ {getIndustryNameArabic(industryType)}!</span>
@@ -777,7 +763,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
               </div>
 
               {/* Stanza display paper */}
-              <div className="w-full bg-[#fdfbf7] dark:bg-[#0c1610] rounded-3xl border border-[#b58d3d]/30 shadow-lg overflow-hidden relative">
+              <div className="w-full bg-[#0c1610] rounded-3xl border border-[#dfba6b]/35 shadow-lg overflow-hidden relative">
                 {/* Vintage Watermark */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #b58d3d 1px, transparent 0)', backgroundSize: '24px 24px' }} />
                 
@@ -797,7 +783,7 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
                   {result.stanzas.map((stanza, sIdx) => (
                     <div 
                       key={sIdx}
-                      className="border border-[#b58d3d]/20 rounded-2xl p-5 bg-white/40 dark:bg-black/10 shadow-xs relative"
+                      className="border border-[#dfba6b]/20 rounded-2xl p-5 bg-[#09140d]/50 shadow-xs relative"
                     >
                       <span className="absolute top-3 right-3 text-[9px] font-black uppercase text-[#8b1d2e] bg-red-50 dark:bg-red-950/20 px-2 py-0.5 rounded">المقطوعة {sIdx + 1}</span>
                       
@@ -860,10 +846,8 @@ export default function PoeticIndustries({ isDarkMode, turnstileSiteKey, onSaveP
 
               {/* Explanation/Critique */}
               {result.explanation && (
-                <div className={`p-5 rounded-3xl border shadow-sm ${
-                  isDarkMode ? 'bg-[#102216] border-white/5' : 'bg-white border-manuscript-border'
-                }`}>
-                  <h3 className="font-serif font-black text-sm text-[#1a472a] dark:text-[#dfba6b] mb-3 pb-2 border-b border-gray-100 dark:border-white/5 flex items-center gap-2">
+                <div className="p-5 rounded-3xl border shadow-xl bg-[#09140d]/90 backdrop-blur-md border-[#dfba6b]/35 text-[#eefaf3]">
+                  <h3 className="font-serif font-black text-sm text-[#dfba6b] mb-3 pb-2 border-b border-[#dfba6b]/15 flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#8b1d2e]" />
                     التقرير الفني ومطابقة معجم الصناعة
                   </h3>

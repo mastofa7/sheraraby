@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GeneratedPoem } from '../types';
-import { BookOpen, Calendar, ChevronLeft, Trash2, Award, Search, Star, Heart } from 'lucide-react';
+import { BookOpen, Calendar, ChevronLeft, Trash2, Award, Search, Star } from 'lucide-react';
 
 interface HistoryListProps {
   history: GeneratedPoem[];
@@ -8,9 +8,10 @@ interface HistoryListProps {
   onDeletePoem: (id: string, e: React.MouseEvent) => void;
   onToggleFavorite: (id: string, e: React.MouseEvent) => void;
   onClearAll: () => void;
+  isDarkMode?: boolean;
 }
 
-export default function HistoryList({ history, onSelectPoem, onDeletePoem, onToggleFavorite, onClearAll }: HistoryListProps) {
+export default function HistoryList({ history, onSelectPoem, onDeletePoem, onToggleFavorite, onClearAll, isDarkMode = true }: HistoryListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
@@ -32,32 +33,34 @@ export default function HistoryList({ history, onSelectPoem, onDeletePoem, onTog
 
   if (history.length === 0) {
     return (
-      <div className="bg-white border border-manuscript-border/50 rounded-2xl p-8 text-center" id="history-empty-state">
-        <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
-          <BookOpen className="w-8 h-8 text-[#b58d3d]" />
+      <div className="border rounded-2xl p-8 text-center relative overflow-hidden bg-[#102216]/40 border-[#dfba6b]/20 text-white" id="history-empty-state">
+        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border bg-[#dfba6b]/10 border-[#dfba6b]/30 text-[#dfba6b]">
+          <BookOpen className="w-8 h-8" />
         </div>
-        <h4 className="text-royal-800 font-bold mb-1">الديوان الخاص بك فارغ حالياً</h4>
-        <p className="text-xs text-gray-500 max-w-sm mx-auto">
-          عندما تقوم بنظم قصائد جديدة، ستظهر تلقائياً في هذا القسم للرجوع إليها ونسخها وتصديرها في أي وقت لاحق حتى لو قمت بإغلاق المتصفح.
+        <h4 className="font-bold font-serif mb-1">الديوان الخاص بك فارغ حالياً</h4>
+        <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed font-serif">
+          عندما تقوم بنظم قصائد جديدة، ستظهر تلقائياً في هذا القسم للرجوع إليها ونسخها وتصديرها في أي وقت لاحق.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-manuscript-border/40 rounded-2xl p-5 shadow-sm" id="history-container">
-      <div className="flex flex-col gap-3 mb-4 border-b border-gray-100 pb-4">
+    <div className="border rounded-2xl p-5 shadow-lg relative overflow-hidden bg-[#09140d]/85 border-[#dfba6b]/30 text-white" id="history-container">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-500/5 to-transparent pointer-events-none" />
+      
+      <div className="flex flex-col gap-3 mb-4 border-b border-white/5 pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-royal-800 flex items-center gap-2">
-              <Award className="w-5 h-5 text-jullanar-600" />
-              ديوانك المحفوظ محلياً ({history.length})
+            <h3 className="font-bold font-serif text-base flex items-center gap-2 text-[#dfba6b]">
+              <Award className="w-5 h-5 text-[#dfba6b]" />
+              ديوانك المحفوظ ({history.length})
             </h3>
-            <p className="text-[11px] text-gray-500">القصائد التي قمت بإنشائها مسبقاً محفوظة بأمان في متصفحك.</p>
+            <p className="text-[11px] text-gray-400">القصائد التي قمت بإنشائها مسبقاً محفوظة بأمان في ديوانك السحابي.</p>
           </div>
           <button
             onClick={onClearAll}
-            className="text-xs text-red-600 hover:text-red-800 font-semibold bg-red-50 hover:bg-red-100/50 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-xs text-red-400 hover:text-red-300 font-semibold bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
           >
             مسح الكل
           </button>
@@ -72,18 +75,18 @@ export default function HistoryList({ history, onSelectPoem, onDeletePoem, onTog
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ابحث بالعنوان أو الأبيات أو البحر..."
-              className="w-full bg-[#fdfcf9] border border-gray-200 rounded-xl pr-9 pl-3 py-2 text-xs focus:ring-2 focus:ring-[#1a472a] outline-none"
+              className="w-full border rounded-xl pr-9 pl-3 py-2 text-xs outline-none transition-all bg-[#030a05] border-[#dfba6b]/20 text-white focus:border-[#dfba6b]"
             />
           </div>
           <button
             onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               showOnlyFavorites
-                ? 'bg-amber-500 text-white shadow-xs'
-                : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                ? 'bg-[#dfba6b] text-[#030a05] shadow-xs'
+                : 'bg-amber-500/10 text-[#dfba6b] hover:bg-amber-500/20'
             }`}
           >
-            <Star className={`w-3.5 h-3.5 ${showOnlyFavorites ? 'fill-white' : 'fill-amber-600'}`} />
+            <Star className={`w-3.5 h-3.5 ${showOnlyFavorites ? 'fill-[#030a05]' : 'fill-[#dfba6b]/30'}`} />
             المفضلة فقط
           </button>
         </div>
@@ -104,15 +107,15 @@ export default function HistoryList({ history, onSelectPoem, onDeletePoem, onTog
               <div
                 key={poem.id}
                 onClick={() => onSelectPoem(poem)}
-                className="group p-3.5 rounded-xl border border-manuscript-border/30 hover:border-royal-400 bg-manuscript-paper/40 hover:bg-royal-50/20 transition-all duration-200 cursor-pointer flex items-center justify-between gap-3"
+                className="group p-3.5 rounded-xl border transition-all duration-300 cursor-pointer flex items-center justify-between gap-3 border-[#dfba6b]/20 bg-[#0d1611]/60 hover:border-[#dfba6b] hover:bg-[#122417]"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-royal-100 text-royal-800">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       بحر {poem.meterName}
                     </span>
                     {poem.weightSafetyPercentage !== undefined && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">
                         موزون {poem.weightSafetyPercentage}%
                       </span>
                     )}
@@ -121,10 +124,10 @@ export default function HistoryList({ history, onSelectPoem, onDeletePoem, onTog
                       {formattedDate}
                     </span>
                   </div>
-                  <h4 className="font-serif font-bold text-base text-royal-900 group-hover:text-jullanar-600 transition-colors truncate">
+                  <h4 className="font-serif font-bold text-base text-[#dfba6b] group-hover:text-amber-500 transition-colors truncate">
                     {poem.title}
                   </h4>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                  <p className="text-xs text-gray-400 italic truncate mt-0.5 font-serif">
                     {poem.verses[0] ? `"${poem.verses[0].shatr1} ... ${poem.verses[0].shatr2}"` : ''}
                   </p>
                 </div>
@@ -132,19 +135,19 @@ export default function HistoryList({ history, onSelectPoem, onDeletePoem, onTog
                 <div className="flex items-center gap-1">
                   <button
                     onClick={(e) => onToggleFavorite(poem.id, e)}
-                    className="p-1.5 rounded-lg hover:bg-amber-50 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg hover:bg-amber-500/10 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
                     title={poem.isFavorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}
                   >
-                    <Star className={`w-4 h-4 ${poem.isFavorite ? 'fill-amber-500 text-amber-500' : ''}`} />
+                    <Star className={`w-4 h-4 ${poem.isFavorite ? 'fill-[#dfba6b] text-[#dfba6b]' : ''}`} />
                   </button>
                   <button
                     onClick={(e) => onDeletePoem(poem.id, e)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                     title="حذف من الديوان المحفوظ"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  <ChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-royal-600 group-hover:translate-x-[-2px] transition-all" />
+                  <ChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-amber-500 group-hover:translate-x-[-2px] transition-all" />
                 </div>
               </div>
             );

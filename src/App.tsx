@@ -44,6 +44,7 @@ import { GenerationParams, GeneratedPoem, RhymeSystem } from './types';
 import TurnstileWidget from './components/TurnstileWidget';
 import WelcomePage from './components/WelcomePage';
 import GatewayPage from './components/GatewayPage';
+import BotanicalThemeBackground from './components/BotanicalThemeBackground';
 
 import { auth, googleProvider, apiFetch } from './firebase';
 import { signInWithPopup, signInAnonymously, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -157,8 +158,6 @@ export default function App() {
   const isUserAdmin = !!(user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin'));
   const [unauthorizedDomainError, setUnauthorizedDomainError] = useState<string | null>(null);
   const [popupClosedError, setPopupClosedError] = useState<boolean>(false);
-  const [paymentVerifying, setPaymentVerifying] = useState<boolean>(false);
-  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
   const [isPlatformEntered, setIsPlatformEntered] = useState<boolean>(false);
 
   // Listen to Auth State Changes
@@ -319,7 +318,7 @@ export default function App() {
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
 
   // ميزات متقدمة
-  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin' | 'subscriptions'>('studio');
+  const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin'>('studio');
 
   // Secure Redirection: If non-admin attempts to access admin tab, redirect silently to studio
   useEffect(() => {
@@ -328,13 +327,9 @@ export default function App() {
       if (!isAdmin) {
         setActiveMainTab('studio');
       }
-    } else if (activeMainTab === 'subscriptions') {
-      if (!user) {
-        setActiveMainTab('studio');
-      }
     }
   }, [activeMainTab, user, userRole]);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
   
   // إعدادات النظم المتقدمة
@@ -390,7 +385,9 @@ export default function App() {
   useEffect(() => {
     try {
       const savedDarkMode = localStorage.getItem('arabic_poems_dark_mode');
-      if (savedDarkMode === 'true') {
+      if (savedDarkMode === 'false') {
+        setIsDarkMode(false);
+      } else {
         setIsDarkMode(true);
       }
     } catch (err) {
@@ -740,218 +737,241 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col transition-all duration-300 ${
-      isDarkMode 
-        ? 'bg-[#0a120d] text-[#e8f5ee] selection:bg-[#dfba6b]/30 selection:text-[#aef8cf]' 
-        : 'bg-[#f8f5f0] text-gray-900 selection:bg-[#b58d3d]/30 selection:text-[#1a472a]'
-    }`} id="app-root">
-      {/* Decorative top strip */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-[#1a472a] via-[#b58d3d] to-[#8b1d2e]" />
+    <div className="relative min-h-screen flex flex-col lg:flex-row bg-[#030a05] text-[#e8f5ee] selection:bg-[#dfba6b]/30 selection:text-[#aef8cf] overflow-hidden" id="app-root">
+      <BotanicalThemeBackground />
+      {/* Decorative top strip on desktop sidebar, but we can have it at the top of the screen */}
+      <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-l from-[#1a472a] via-[#dfba6b] to-[#8b1d2e] z-40" />
 
-      {/* Royal Elegant Header */}
-      <header className={`border-b transition-colors duration-300 shadow-md py-5 px-4 md:px-8 relative z-20 ${
-        isDarkMode ? 'bg-[#0f2115] border-[#dfba6b]/30 text-white' : 'bg-[#1a472a] border-[#b58d3d]/40 text-white'
-      }`}>
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#b58d3d] rounded-xl flex items-center justify-center text-2xl shadow-md border border-[#fbf9f4]/20 shrink-0">
+      {/* Luxurious Left Sidebar */}
+      <aside className="w-full lg:w-76 shrink-0 border-b lg:border-b-0 lg:border-l border-[#dfba6b]/25 transition-all duration-300 flex flex-col justify-between p-6 z-30 bg-[#061208]/90 backdrop-blur-md text-white">
+        <div className="flex flex-col gap-6 pt-2">
+          {/* Brand header */}
+          <div className="flex items-center gap-3 pb-5 border-b border-white/10">
+            <div className="w-10 h-10 bg-[#dfba6b] rounded-xl flex items-center justify-center text-xl shadow-md border border-white/10 shrink-0">
               🖋️
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-base font-serif font-bold text-white flex items-center gap-1">
                 صانع الشعر العربي
-                <span className="text-[10px] font-sans font-medium px-2 py-0.5 rounded-full bg-[#8b1d2e] text-white border border-red-500/20 animate-pulse">
-                  Gemini مدفوع
+                <span className="text-[8px] font-sans font-medium px-1.5 py-0.5 rounded-full bg-[#8b1d2e] text-white border border-red-500/10">
+                  مدفوع
                 </span>
               </h1>
-              <p className={`text-xs font-sans mt-0.5 ${isDarkMode ? 'text-[#dfba6b]' : 'text-[#b58d3d]'}`}>
-                منصة كلاسيكية ذكية لنظم الشعر العربي الفصيح الموزون وتحليل تفعيلات الخليل
-              </p>
+              <p className="text-[9px] text-[#dfba6b]/80">ديوان العبقرية الرقمي</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* نظام تسجيل الدخول الاحترافي */}
-            {user ? (
-              <div className="flex items-center gap-2 border border-[#dfba6b]/30 bg-black/20 p-1.5 rounded-xl">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'الحساب'}
-                    referrerPolicy="no-referrer"
-                    className="w-7 h-7 rounded-full border border-[#dfba6b]/40 shadow-xs shrink-0"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-amber-500/10 border border-[#dfba6b]/40 flex items-center justify-center text-xs font-serif font-black text-[#dfba6b] shrink-0">
-                    {user.displayName ? user.displayName.slice(0, 1) : 'ش'}
-                  </div>
-                )}
-                <div className="hidden md:flex flex-col text-right pl-2 shrink-0">
-                  <span className="text-[10px] font-bold text-white leading-tight">{user.displayName}</span>
-                  <span className="text-[8px] text-[#dfba6b] leading-none">مستشار مسجل</span>
-                </div>
-                <button
-                  onClick={handleSignOut}
-                  className="px-2.5 py-1.5 bg-red-600/80 hover:bg-red-700 text-white text-[9px] font-bold rounded-lg transition-all cursor-pointer shrink-0"
-                >
-                  خروج
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleSignInWithGoogle}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-800 hover:bg-gray-100 text-xs font-bold rounded-xl transition-all border border-gray-200 shadow-sm cursor-pointer shrink-0"
-              >
-                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-                <span className="hidden sm:inline">دخول بـ Google</span>
-                <span className="sm:hidden">دخول</span>
-              </button>
-            )}
-
-            {/* Dark Mode Toggle */}
+          {/* Navigation Links */}
+          <div className="flex flex-col gap-1.5">
             <button
-              onClick={handleToggleDarkMode}
-              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                isDarkMode 
-                  ? 'bg-[#152e1f] border-[#dfba6b]/30 text-[#dfba6b] hover:bg-[#1f422e]' 
-                  : 'bg-[#1a472a] border-[#b58d3d]/30 text-[#b58d3d] hover:bg-[#235f38]'
+              onClick={() => setActiveMainTab('studio')}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer ${
+                activeMainTab === 'studio'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-white/80 hover:bg-white/5'
               }`}
-              title={isDarkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
             >
-              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              <Feather className="w-4 h-4 shrink-0" />
+              <span>صومعة النظم والبحور</span>
             </button>
 
-            {/* Subscription status display in header */}
-            {user && (
-              <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 select-none ${
-                userPlanId === 'gold' || userPlanId === 'premium'
-                  ? 'border-amber-400 bg-amber-500/15 text-amber-300 shadow-xs'
-                  : userPlanId === 'silver' || userPlanId === 'member'
-                  ? 'border-slate-300 bg-slate-400/15 text-slate-100'
-                  : isDarkMode
-                  ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]'
-                  : 'border-[#b58d3d]/30 bg-[#1a472a]/50 text-white'
+            <button
+              onClick={() => setActiveMainTab('opposition')}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer ${
+                activeMainTab === 'opposition'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-white/80 hover:bg-white/5'
               }`}
-              onClick={() => setActiveMainTab('subscriptions')}
-              title="إدارة الباقة والعدادات الأدبية"
-              >
-                <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-                <span>الباقة: {isUserAdmin ? 'المالك / بلا حدود' : (userPlanId === 'gold' || userPlanId === 'premium' ? 'الاحترافية' : userPlanId === 'silver' || userPlanId === 'member' ? 'المتوسطة' : userPlanId === 'free' ? 'المجانية' : 'الزائر')}</span>
-                {remainingDailyUses !== null && (
-                  <span className="text-[10px] opacity-85 border-r border-white/20 pr-1.5 font-sans mr-0.5">
-                    {isUserAdmin ? '∞' : remainingDailyUses} متبقي
-                  </span>
-                )}
-              </div>
-            )}
+            >
+              <ArrowLeftRight className="w-4 h-4 shrink-0" />
+              <span>المعارضة الشعرية</span>
+            </button>
 
-            <span className="text-[10px] uppercase font-mono tracking-widest text-white/50 hidden xl:inline-block">
-              v2.6.0 • نشط
-            </span>
+            <button
+              onClick={() => setActiveMainTab('industries')}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer ${
+                activeMainTab === 'industries'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-white/80 hover:bg-white/5'
+              }`}
+            >
+              <Scissors className="w-4 h-4 shrink-0" />
+              <span>الصناعات الشعرية التراثية</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainTab('tools')}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer ${
+                activeMainTab === 'tools'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-white/80 hover:bg-white/5'
+              }`}
+            >
+              <Sliders className="w-4 h-4 shrink-0" />
+              <span>أدوات البلاغة والعروض المتقدمة</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainTab('archive')}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer ${
+                activeMainTab === 'archive'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-white/80 hover:bg-white/5'
+              }`}
+            >
+              <Award className="w-4 h-4 shrink-0" />
+              <span>ديوانك المحفوظ {user ? `(${history.length})` : ''}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMainTab('analytics')}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer ${
+                activeMainTab === 'analytics'
+                  ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
+                  : 'text-white/80 hover:bg-white/5'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 shrink-0" />
+              <span>تحليلات الشاعر البيانية</span>
+            </button>
+
+            {user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
+              <button
+                onClick={() => setActiveMainTab('admin')}
+                className={`w-full px-4 py-3 rounded-xl text-xs font-serif font-bold transition-all text-right flex items-center gap-2.5 cursor-pointer border ${
+                  activeMainTab === 'admin'
+                    ? 'bg-amber-500 text-amber-950 border-amber-400 shadow-md'
+                    : 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10'
+                }`}
+              >
+                <Crown className="w-4 h-4 shrink-0" />
+                <span>لوحة التحكم الإدارية</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tab switchers */}
-        <div className="max-w-7xl mx-auto flex items-center gap-1.5 mt-5 border-t border-white/10 pt-4 overflow-x-auto custom-scroll">
-          <button
-            onClick={() => setActiveMainTab('studio')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'studio'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <Feather className="w-3.5 h-3.5" />
-            صومعة النظم والبحور
-          </button>
+        {/* Beautiful vintage footer block in sidebar */}
+        <div className="mt-8 border-t border-white/10 pt-5 relative">
+          <div className="absolute top-0 right-0 w-12 h-12 bg-[#dfba6b]/5 rounded-full blur-xl pointer-events-none" />
+          <div className="p-3 bg-black/20 rounded-xl border border-white/5 text-center relative z-10">
+            <Quote className="w-3.5 h-3.5 text-[#dfba6b] mx-auto mb-1 opacity-80" />
+            <p className="font-serif italic text-[10px] leading-relaxed text-gray-200">
+              "لِسَانُ الْفَتَى سَبْعٌ عَلَيْهِ شَبَاتُهُ / فَلَا تُمِتْ عَقْلًا بِمَا لَا يُسَطَّرُ"
+            </p>
+            <span className="text-[8px] text-[#dfba6b]/80 block mt-1">— ديوان الحكمة</span>
+          </div>
 
-          <button
-            onClick={() => setActiveMainTab('opposition')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'opposition'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-            المعارضة الشعرية
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('industries')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'industries'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <Scissors className="w-3.5 h-3.5" />
-            الصناعات الشعرية التراثية
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('tools')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'tools'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            أدوات البلاغة والعروض المتقدمة
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('archive')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'archive'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <Award className="w-3.5 h-3.5" />
-            ديوانك المحفوظ {user ? `(${history.length})` : ''}
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('analytics')}
-            className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeMainTab === 'analytics'
-                ? 'bg-[#dfba6b] text-[#1a472a] shadow-md'
-                : 'text-white/80 hover:bg-white/5'
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            تحليلات الشاعر البيانية
-          </button>
-
-
-
-          {user && (user.email === 'mw9392000@gmail.com' || userRole === 'admin') && (
-            <button
-              onClick={() => setActiveMainTab('admin')}
-              className={`px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border ${
-                activeMainTab === 'admin'
-                  ? 'bg-amber-500 text-amber-950 border-amber-400 shadow-md'
-                  : 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5" />
-              لوحة التحكم الإدارية
-            </button>
-          )}
-
-
+          <div className="flex items-center justify-between mt-4 text-[9px] text-gray-300">
+            <span>النسخة v2.6.0</span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+              نشط الآن
+            </span>
+          </div>
         </div>
-      </header>
+      </aside>
 
-      {/* Main Content Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 flex flex-col gap-6 relative">
+      {/* Main Workspace Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header Bar */}
+        <header className="border-b border-[#dfba6b]/25 transition-all duration-300 shadow-md py-4 px-4 md:px-8 relative z-20 bg-[#0a1b0f]/85 backdrop-blur-md text-white">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="hidden lg:flex w-10 h-10 bg-[#dfba6b]/15 rounded-xl items-center justify-center text-xl border border-[#dfba6b]/20">
+                🖋️
+              </div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-serif font-bold text-white flex items-center gap-2">
+                  {activeMainTab === 'studio' && 'صومعة النظم والبحور'}
+                  {activeMainTab === 'opposition' && 'المعارضة الشعرية'}
+                  {activeMainTab === 'industries' && 'الصناعات الشعرية التراثية'}
+                  {activeMainTab === 'tools' && 'أدوات البلاغة والعروض المتقدمة'}
+                  {activeMainTab === 'archive' && 'ديوانك المحفوظ'}
+                  {activeMainTab === 'analytics' && 'تحليلات الشاعر البيانية'}
+                  {activeMainTab === 'admin' && 'لوحة التحكم الإدارية'}
+                </h1>
+                <p className={`text-[10px] font-sans ${isDarkMode ? 'text-[#dfba6b]' : 'text-gray-200'}`}>
+                  منصة كلاسيكية ذكية لنظم الشعر العربي الفصيح الموزون وتحليل تفعيلات الخليل
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* نظام تسجيل الدخول الاحترافي */}
+              {user ? (
+                <div className="flex items-center gap-2 border border-[#dfba6b]/30 bg-black/20 p-1.5 rounded-xl">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || 'الحساب'}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full border border-[#dfba6b]/40 shadow-xs shrink-0"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-amber-500/10 border border-[#dfba6b]/40 flex items-center justify-center text-xs font-serif font-black text-[#dfba6b] shrink-0">
+                      {user.displayName ? user.displayName.slice(0, 1) : 'ش'}
+                    </div>
+                  )}
+                  <div className="hidden md:flex flex-col text-right pl-2 shrink-0">
+                    <span className="text-[10px] font-bold text-white leading-tight">{user.displayName}</span>
+                    <span className="text-[8px] text-[#dfba6b] leading-none">مستشار مسجل</span>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="px-2.5 py-1.5 bg-red-600/80 hover:bg-red-700 text-white text-[9px] font-bold rounded-lg transition-all cursor-pointer shrink-0"
+                  >
+                    خروج
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleSignInWithGoogle}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-800 hover:bg-gray-100 text-xs font-bold rounded-xl transition-all border border-gray-200 shadow-sm cursor-pointer shrink-0"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                  <span className="hidden sm:inline">دخول بـ Google</span>
+                  <span className="sm:hidden">دخول</span>
+                </button>
+              )}
+
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={handleToggleDarkMode}
+                className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                  isDarkMode 
+                    ? 'bg-[#152e1f] border-[#dfba6b]/30 text-[#dfba6b] hover:bg-[#1f422e]' 
+                    : 'bg-[#1a472a] border-[#b58d3d]/30 text-[#b58d3d] hover:bg-[#235f38]'
+                }`}
+                title={isDarkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
+              {/* Account status display in header */}
+              {user && (
+                <div className={`text-xs border px-3 py-1.5 rounded-xl font-serif flex items-center gap-1.5 select-none ${
+                  isDarkMode
+                    ? 'border-[#dfba6b]/30 bg-[#0a120d] text-[#dfba6b]'
+                    : 'border-[#b58d3d]/30 bg-[#1a472a]/50 text-white'
+                }`}
+                title="العدادات الأدبية اليومية"
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                  <span>الحساب: {isUserAdmin ? 'المالك' : 'مجاني'}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Viewport */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 flex flex-col gap-6 relative">
         
         {error && !popupClosedError && (
           <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl text-red-900 dark:text-red-200 text-xs md:text-sm flex items-center justify-between gap-4 shadow-sm animate-fade-in relative z-30">
@@ -1104,73 +1124,44 @@ export default function App() {
           </div>
         )}
 
-        {paymentVerifying && (
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-500/30 p-5 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs md:text-sm flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-fade-in relative z-30" dir="rtl">
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin shrink-0" />
-              <p className="font-serif font-black leading-relaxed text-right">جاري التحقق من نجاح عملية الدفع وتفعيل اشتراكك لدى Paymob... يرجى الانتظار ثوانٍ معدودة.</p>
-            </div>
-          </div>
-        )}
 
-        {paymentSuccessMessage && (
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-500/30 p-5 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs md:text-sm flex items-center justify-between gap-4 shadow-md animate-fade-in relative z-30" dir="rtl">
-            <div className="flex items-center gap-3">
-              <span className="text-xl shrink-0">🎉</span>
-              <p className="font-serif font-black leading-relaxed text-right">{paymentSuccessMessage}</p>
-            </div>
-            <button 
-              onClick={() => setPaymentSuccessMessage(null)}
-              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0"
-            >
-              إغلاق
-            </button>
-          </div>
-        )}
         
         {/* Banner quote */}
-        <div className={`border transition-colors duration-300 rounded-2xl p-5 shadow-sm relative overflow-hidden flex items-center gap-4 ${
-          isDarkMode ? 'bg-[#0f1d14] border-[#dfba6b]/20 text-[#e8f5ee]' : 'bg-white border-[#b58d3d]/25 text-gray-800'
-        }`}>
-          <div className="absolute top-0 left-0 w-32 h-full bg-gradient-to-r from-amber-50/20 to-transparent pointer-events-none" />
-          <div className={`p-3 rounded-xl shrink-0 ${isDarkMode ? 'bg-[#dfba6b]/10' : 'bg-[#1a472a]/5'}`}>
-            <Quote className={`w-6 h-6 ${isDarkMode ? 'text-[#dfba6b]' : 'text-[#8b1d2e]'}`} />
+        {/* Banner quote */}
+        <div className="border border-[#dfba6b]/35 rounded-2xl p-5 shadow-lg relative overflow-hidden flex items-center gap-4 bg-[#09140d]/90 backdrop-blur-md text-[#e8f5ee]">
+          <div className="absolute top-0 left-0 w-32 h-full bg-gradient-to-r from-[#dfba6b]/10 to-transparent pointer-events-none" />
+          <div className="p-3 rounded-xl shrink-0 bg-[#dfba6b]/15 border border-[#dfba6b]/20">
+            <Quote className="w-6 h-6 text-[#dfba6b]" />
           </div>
           <div>
             <p className="font-serif italic text-sm md:text-base leading-relaxed">
               "الشعر هو طائر يعبر الفترات الطويلة والأزمنة؛ صانع الشعر العربي يعيد إحياء المعلقات ويصوغ القوافي بإلهام متكامل من التراث العربي الفصيح."
             </p>
-            <span className={`text-xs font-semibold mt-1 block ${isDarkMode ? 'text-[#dfba6b]' : 'text-[#b58d3d]'}`}>— المخطوطات والقرائح القديمة</span>
+            <span className="text-xs font-semibold mt-1 block text-[#dfba6b]">— المخطوطات والقرائح القديمة</span>
           </div>
         </div>
 
         {/* Loading Overlay */}
         {loading && (
-          <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in ${
-            isDarkMode ? 'bg-[#0a120d]/98' : 'bg-[#f8f5f0]/95'
-          }`}>
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in bg-[#030a05]/98">
             <div className="relative mb-8">
-              <div className={`w-24 h-24 rounded-full border-4 animate-spin ${
-                isDarkMode ? 'border-t-[#dfba6b] border-[#152e1f]' : 'border-t-[#1a472a] border-[#b58d3d]/30'
-              }`} />
+              <div className="w-24 h-24 rounded-full border-4 animate-spin border-t-[#dfba6b] border-[#152e1f]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <Feather className="w-8 h-8 text-[#8b1d2e] animate-bounce" />
               </div>
             </div>
             
-            <h3 className={`font-serif font-bold text-2xl mb-2 ${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
+            <h3 className="font-serif font-bold text-2xl mb-2 text-[#dfba6b]">
               يجري نظم الدر المنثور عروضياً الآن...
             </h3>
             
-            <div className={`max-w-md mx-auto p-4 border rounded-2xl shadow-inner ${
-              isDarkMode ? 'bg-[#102216] border-[#dfba6b]/20' : 'bg-white/80 border-amber-200'
-            }`}>
-              <p className="text-sm font-serif italic animate-pulse text-[#1a6d49] dark:text-[#dfba6b]">
+            <div className="max-w-md mx-auto p-4 border rounded-2xl shadow-inner bg-[#102216] border-[#dfba6b]/25">
+              <p className="text-sm font-serif italic animate-pulse text-[#dfba6b]">
                 {LOADING_QUOTES[loadingQuoteIndex]}
               </p>
             </div>
             
-            <p className="text-xs text-gray-400 mt-6">
+            <p className="text-xs text-gray-400 mt-6 font-serif">
               قد تستغرق الصياغة الدقيقة وعروض البحور من 5 إلى 15 ثانية للتثبت من القافية والوزن.
             </p>
           </div>
@@ -1217,9 +1208,51 @@ export default function App() {
                         setIsRevisionWorkspaceOpen(false);
                       }} 
                       onOpenRevisionWorkspace={() => setIsRevisionWorkspaceOpen(true)}
+                      isDarkMode={isDarkMode}
                     />
                   </div>
                 )}
+
+                {/* Majestic Andalusian Arch Window Graphic */}
+                <div className="relative w-full h-48 md:h-56 rounded-3xl overflow-hidden shadow-2xl border border-[#dfba6b]/40 bg-[#06120a] mb-2 flex items-center justify-center p-6 text-center select-none">
+                  {/* Outer Botanical Pattern / Gradients */}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(26,71,42,0.45)_0%,rgba(5,14,9,0.98)_100%)] z-0" />
+                  
+                  {/* Arch Structure */}
+                  <div className="absolute top-3 bottom-3 w-[85%] max-w-sm rounded-t-full border-4 border-double border-[#dfba6b]/45 bg-gradient-to-b from-[#11311b]/80 to-[#07160d]/95 shadow-[0_0_20px_rgba(223,186,107,0.15)] flex flex-col items-center justify-center p-4 relative z-10 overflow-hidden">
+                    {/* Glowing Star/Moons in Sky */}
+                    <div className="absolute top-4 left-6 w-1 h-1 bg-[#dfba6b] rounded-full animate-ping opacity-75" />
+                    <div className="absolute top-8 right-10 w-1 h-1 bg-[#dfba6b] rounded-full animate-pulse" />
+                    <div className="absolute top-6 left-1/3 w-0.5 h-0.5 bg-white rounded-full opacity-60" />
+                    <div className="absolute top-10 right-1/4 w-1 h-1 bg-[#dfba6b] rounded-full opacity-40" />
+                    
+                    {/* Islamic Pattern Silhouette background */}
+                    <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#dfba6b_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                    {/* Vintage Arabic Poetry Calligraphy Graphic */}
+                    <div className="text-center space-y-2 relative z-20">
+                      <div className="w-7 h-7 rounded-full border border-[#dfba6b]/30 flex items-center justify-center mx-auto text-xs text-[#dfba6b] bg-[#1a472a]/40 shadow-inner">
+                        🕌
+                      </div>
+                      <h3 className="font-serif text-xs md:text-sm font-bold text-white tracking-wide leading-relaxed">
+                        "أَلَا هَلْ أَتَى الطَّائِرَ الْمَيْمُونَ نَبْأَتُنَا؟ <br />
+                        أَمِ الْقَوَافِي هِيَ الْأَنْوَارُ فَتَّانَا؟"
+                      </h3>
+                      <p className="text-[9px] text-[#dfba6b] font-medium font-serif opacity-90">— ديوان قرطبة القديم</p>
+                    </div>
+
+                    {/* Hanging Lantern (Fanus) decoration */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-gradient-to-b from-[#dfba6b] to-transparent opacity-65 flex items-center justify-center">
+                      <div className="absolute top-4 w-1.5 h-2 bg-[#dfba6b] rounded-full animate-bounce shadow-[0_0_8px_#dfba6b]" />
+                    </div>
+                  </div>
+
+                  {/* Border corner decorations */}
+                  <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-[#dfba6b]/40 rounded-tr-xl pointer-events-none" />
+                  <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-[#dfba6b]/40 rounded-tl-xl pointer-events-none" />
+                  <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-[#dfba6b]/40 rounded-br-xl pointer-events-none" />
+                  <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-[#dfba6b]/40 rounded-bl-xl pointer-events-none" />
+                </div>
 
                 {/* Input parameters panel */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1733,15 +1766,15 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={loading || (!!turnstileSiteKey && !turnstileToken && !isUserAdmin) || (remainingDailyUses === 0 && !isUserAdmin)}
-                  className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg active:translate-y-0.5 transition-all flex items-center justify-center gap-2 border-b-4 ${
+                  className={`w-full py-4 rounded-xl font-bold font-serif text-lg shadow-xl hover:shadow-[0_0_20px_rgba(223,186,107,0.3)] active:translate-y-0.5 transition-all flex items-center justify-center gap-2 border-b-4 ${
                     (loading || (!!turnstileSiteKey && !turnstileToken && !isUserAdmin) || (remainingDailyUses === 0 && !isUserAdmin)) 
-                      ? 'bg-gray-400 text-gray-200 border-gray-600 cursor-not-allowed opacity-75' 
-                      : 'bg-[#1a472a] text-white hover:bg-[#153a22] cursor-pointer border-[#0d2a18]'
+                      ? 'bg-gray-600/40 text-gray-400 border-gray-800 cursor-not-allowed opacity-60' 
+                      : 'bg-gradient-to-l from-[#1e5633] via-[#1a472a] to-[#12361e] text-[#dfba6b] hover:text-white hover:from-[#23643b] hover:to-[#174426] border-[#dfba6b]/60 cursor-pointer'
                   }`}
                 >
                   {loading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-t-transparent border-[#dfba6b] rounded-full animate-spin" />
                       جاري صياغة موازين القصيدة...
                     </>
                   ) : (
@@ -1793,6 +1826,7 @@ export default function App() {
                     onDeletePoem={handleDeletePoem}
                     onToggleFavorite={handleToggleFavorite}
                     onClearAll={handleClearHistory}
+                    isDarkMode={isDarkMode}
                   />
                 )}
 
@@ -1998,7 +2032,7 @@ export default function App() {
         </div>
       </footer>
 
-
+      </div> {/* End right column wrapper */}
     </div>
   );
 }

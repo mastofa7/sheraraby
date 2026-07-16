@@ -11,9 +11,10 @@ interface PoemDisplayProps {
   poem: GeneratedPoem;
   onReset: () => void;
   onOpenRevisionWorkspace?: () => void;
+  isDarkMode?: boolean;
 }
 
-export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: PoemDisplayProps) {
+export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace, isDarkMode = true }: PoemDisplayProps) {
   const [copied, setCopied] = useState(false);
   const [copiedVerseIndex, setCopiedVerseIndex] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(true);
@@ -276,17 +277,18 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
   return (
     <div className="flex flex-col gap-6" id="poem-display-section">
       {/* Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/80 p-4 rounded-2xl border border-[#b58d3d]/20 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
-          <span className="text-sm font-semibold text-royal-800">اكتمل نظم ديوانك بنجاح!</span>
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl border shadow-md relative overflow-hidden bg-[#102216] border-[#dfba6b]/30 text-white">
+        <div className="absolute top-0 left-0 w-32 h-full bg-gradient-to-r from-amber-50/10 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-2 relative z-10">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-sm font-semibold text-emerald-600 dark:text-[#dfba6b] font-serif">اكتمل نظم المخطوطة بنجاح!</span>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 relative z-10">
           {onOpenRevisionWorkspace && (
             <button
               onClick={onOpenRevisionWorkspace}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-[#8b1d2e] to-rose-700 hover:from-rose-800 hover:to-rose-900 text-white shadow-md transition-all cursor-pointer hover:scale-102"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-gradient-to-l from-[#8b1d2e] to-red-700 hover:from-red-800 hover:to-red-900 text-white shadow-md transition-all cursor-pointer hover:scale-102"
               title="الدخول لورشة العمل والمراجعة العروضية الفورية"
             >
               <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
@@ -296,34 +298,34 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
 
           <button
             onClick={handleCopyAll}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-royal-800 bg-white hover:bg-royal-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-gray-700 dark:text-gray-200 bg-transparent hover:bg-[#1a472a]/10 dark:hover:bg-white/5 transition-colors cursor-pointer"
             title="نسخ القصيدة كاملة للشامخة"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-[#b58d3d]" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-amber-500" />}
             {copied ? 'تم النسخ!' : 'نسخ القصيدة'}
           </button>
 
           <button
             onClick={downloadTxt}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-royal-800 bg-white hover:bg-royal-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-gray-700 dark:text-gray-200 bg-transparent hover:bg-[#1a472a]/10 dark:hover:bg-white/5 transition-colors cursor-pointer"
             title="تنزيل كملف نصي عادي"
           >
-            <FileText className="w-3.5 h-3.5 text-royal-600" />
+            <FileText className="w-3.5 h-3.5 text-[#b58d3d]" />
             تنزيل TXT
           </button>
 
           <button
             onClick={downloadDoc}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-royal-800 bg-white hover:bg-royal-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-gray-700 dark:text-gray-200 bg-transparent hover:bg-[#1a472a]/10 dark:hover:bg-white/5 transition-colors cursor-pointer"
             title="تنزيل لفتحها على ميكروسوفت وورد"
           >
-            <FileText className="w-3.5 h-3.5 text-blue-600" />
+            <FileText className="w-3.5 h-3.5 text-blue-500" />
             تنزيل DOCX
           </button>
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-royal-800 bg-white hover:bg-royal-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-gray-700 dark:text-gray-200 bg-transparent hover:bg-[#1a472a]/10 dark:hover:bg-white/5 transition-colors cursor-pointer"
             title="حفظ بصيغة PDF أو طباعة مباشرة"
           >
             <Printer className="w-3.5 h-3.5 text-[#8b1d2e]" />
@@ -332,7 +334,7 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
 
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-royal-800 bg-white hover:bg-royal-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[#b58d3d]/30 text-gray-700 dark:text-gray-200 bg-transparent hover:bg-[#1a472a]/10 dark:hover:bg-white/5 transition-colors cursor-pointer"
             title="مشاركتها مع عشاق الشعر والأدب"
           >
             <Share2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -341,7 +343,7 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
 
           <button
             onClick={onReset}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-royal-700 hover:bg-royal-800 text-white shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-gradient-to-l from-[#1e5633] via-[#1a472a] to-[#12361e] text-[#dfba6b] hover:text-white hover:from-[#23643b] hover:to-[#174426] border border-[#dfba6b]/40 shadow-sm transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             نظم قصيدة جديدة
@@ -359,44 +361,52 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Scroll Paper displaying the generated Poem */}
         <div className="lg:col-span-8 flex flex-col">
-          <div className="w-full manuscript-border bg-[#fdfbf7] shadow-xl relative flex flex-col overflow-hidden rounded-2xl min-h-[500px]">
+          <div className="w-full relative flex flex-col overflow-hidden rounded-3xl min-h-[500px] shadow-2xl border-2 bg-[#0b1b11] border-[#dfba6b]/40">
+            {/* Elegant double border pattern */}
+            <div className="absolute inset-2 border border-dashed pointer-events-none rounded-2xl border-[#dfba6b]/20" />
+
             {/* Scroll watermark background */}
-            <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #b58d3d 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+            <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#b58d3d_1px,transparent_1px)] [background-size:24px_24px]" />
             
             {/* Scroll Header */}
-            <div className="text-center pt-10 pb-6 border-b border-[#b58d3d]/15 px-6 relative">
-              <div className="absolute top-4 left-4 text-xs font-semibold text-[#8b1d2e] bg-[#8b1d2e]/5 px-2.5 py-1 rounded-full border border-[#8b1d2e]/10">
+            <div className="text-center pt-12 pb-8 border-b border-[#b58d3d]/15 px-6 relative z-10">
+              <div className="absolute top-4 left-4 text-xs font-semibold text-[#8b1d2e] dark:text-[#dfba6b] bg-[#8b1d2e]/5 px-2.5 py-1 rounded-full border border-current">
                 بحر {poem.meterName}
               </div>
-              <span className="text-[#8b1d2e] font-serif italic text-sm block mb-1">
-                في غرض {poem.purpose} {poem.poetSimulated ? `على أسلوب ${poem.poetSimulated}` : ''}
+              <span className="text-[#8b1d2e] dark:text-[#dfba6b] font-serif italic text-xs md:text-sm block mb-1">
+                في غرض {poem.purpose} {poem.poetSimulated ? `على أسلوب الشاعر ${poem.poetSimulated}` : ''}
               </span>
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a472a] drop-shadow-sm px-4">
+              <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a472a] dark:text-white drop-shadow-xs px-4">
                 {poem.title || 'قصيدة من ديوان العرب'}
               </h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-transparent via-[#b58d3d] to-transparent mx-auto mt-4" />
+              <div className="w-32 h-1 bg-gradient-to-r from-transparent via-[#b58d3d] to-transparent mx-auto mt-4" />
             </div>
 
-            {/* Verses Container */}
-            <div className="flex-1 px-4 md:px-12 py-8 space-y-4 max-h-[600px] overflow-y-auto custom-scroll">
+            {/* Verses Container (Classical Double Hemistich Grid) */}
+            <div className="flex-1 px-4 md:px-12 py-10 space-y-4 max-h-[600px] overflow-y-auto custom-scroll relative z-10">
               {poem.verses.map((verse, idx) => (
                 <div 
                   key={idx}
                   onClick={() => handleCopySingleVerse(verse.shatr1, verse.shatr2, idx)}
-                  className="verse-line group relative p-1.5 rounded-lg hover:bg-[#1a472a]/5 transition-all duration-200 cursor-pointer"
+                  className="grid grid-cols-1 md:grid-cols-11 items-center gap-2 py-3 px-4 rounded-xl hover:bg-[#1a472a]/5 dark:hover:bg-emerald-500/5 transition-all duration-300 border-b border-[#dfba6b]/10 cursor-pointer group relative"
                   title="اضغط لنسخ هذا البيت منفرداً"
                 >
-                  <div className="shatr text-right font-serif font-bold text-lg md:text-xl text-royal-900 leading-relaxed">
+                  {/* Shatr 1 */}
+                  <div className="col-span-5 text-right font-serif font-bold text-base md:text-lg text-[#1a472a] dark:text-[#dfba6b] leading-relaxed group-hover:text-amber-500 transition-colors">
                     {verse.shatr1}
                   </div>
-                  <div className="text-[#b58d3d] text-center text-xs font-serif self-center select-none group-hover:scale-125 transition-transform">
+                  
+                  {/* Divider Star */}
+                  <div className="col-span-1 text-center text-[#b58d3d] text-xs font-serif self-center select-none py-1 md:py-0">
                     {copiedVerseIndex === idx ? (
-                      <span className="text-green-600 text-[10px] font-sans font-semibold">تم!</span>
+                      <span className="text-green-600 text-[10px] font-sans font-black animate-bounce">تم النسخ</span>
                     ) : (
-                      '❋'
+                      <span className="text-amber-500 font-bold group-hover:rotate-180 duration-500 block">❋</span>
                     )}
                   </div>
-                  <div className="shatr text-left font-serif font-bold text-lg md:text-xl text-royal-900 leading-relaxed">
+                  
+                  {/* Shatr 2 */}
+                  <div className="col-span-5 text-left font-serif font-bold text-base md:text-lg text-[#1a472a] dark:text-[#dfba6b] leading-relaxed group-hover:text-amber-500 transition-colors">
                     {verse.shatr2}
                   </div>
                 </div>
@@ -404,26 +414,26 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
             </div>
 
             {/* Scroll Footer */}
-            <div className="p-4 bg-[#1a472a] text-white flex flex-wrap gap-4 justify-between items-center bg-opacity-95 border-t border-[#b58d3d]/30 text-xs">
+            <div className="p-4 flex flex-wrap gap-4 justify-between items-center border-t text-xs relative z-10 bg-[#0a120d] border-[#dfba6b]/20 text-gray-300">
               <div className="flex flex-wrap gap-4">
                 <div>
-                  <p className="text-[#b58d3d] font-semibold text-[10px] uppercase">البحر العروضي</p>
+                  <p className="text-[#dfba6b] font-semibold text-[10px] uppercase">البحر العروضي</p>
                   <p className="font-bold text-sm font-serif">{poem.meterName}</p>
                 </div>
                 <div>
-                  <p className="text-[#b58d3d] font-semibold text-[10px] uppercase">الروي والقافية</p>
+                  <p className="text-[#dfba6b] font-semibold text-[10px] uppercase">الروي والقافية</p>
                   <p className="font-bold text-sm">حرف {poem.rhymeLetter || 'موحد'}</p>
                 </div>
                 <div>
-                  <p className="text-[#b58d3d] font-semibold text-[10px] uppercase">توليد الذكاء</p>
+                  <p className="text-[#dfba6b] font-semibold text-[10px] uppercase">توليد الذكاء</p>
                   <p className="font-bold text-sm flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-yellow-400" />
-                    Gemini 3.5 المدفوع
+                    الرؤية الشعرية الفصحى
                   </p>
                 </div>
               </div>
 
-              <div className="text-[10px] text-gray-300 italic font-mono">
+              <div className="text-[10px] text-gray-400 italic font-mono">
                 صانع الشعر العربي © ٢٠٢٦
               </div>
             </div>
@@ -433,45 +443,45 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
         {/* Side Panel: Interactive Literary Analysis / Explanation */}
         <div className="lg:col-span-4 flex flex-col gap-4">
           {/* تقرير الفحص العروضي التلقائي */}
-          <div className="bg-gradient-to-br from-[#1a472a]/5 to-emerald-50/50 border border-emerald-500/20 rounded-2xl shadow-sm p-5 flex flex-col gap-4">
+          <div className="border rounded-2xl shadow-md p-5 flex flex-col gap-4 bg-[#102216]/60 border-[#dfba6b]/30">
             <div className="flex items-center gap-3 pb-2 border-b border-emerald-500/10">
-              <div className="bg-emerald-500/10 p-1.5 rounded-xl text-emerald-700">
+              <div className="bg-emerald-500/10 p-1.5 rounded-xl text-emerald-700 dark:text-[#dfba6b]">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-[#1a472a] text-sm">تقرير التدقيق العروضي التلقائي</h3>
-                <p className="text-[10px] text-emerald-700 font-semibold">تم اجتياز الفحص والتدقيق العروضي الفوري بنجاح</p>
+                <h3 className="font-bold text-[#1a472a] dark:text-[#dfba6b] text-sm">تقرير التدقيق العروضي التلقائي</h3>
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">تم اجتياز الفحص والتدقيق العروضي الفوري بنجاح</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-3 shadow-xs">
-                <p className="text-2xl font-black text-emerald-600 font-mono">{poem.weightSafetyPercentage ?? 100}%</p>
-                <p className="text-[10px] font-bold text-gray-500 mt-0.5">نسبة سلامة الوزن</p>
+              <div className="border rounded-xl p-3 shadow-xs bg-black/40 border-emerald-500/20">
+                <p className="text-2xl font-black text-emerald-400 font-mono">{poem.weightSafetyPercentage ?? 100}%</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5">نسبة سلامة الوزن</p>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-3 shadow-xs">
-                <p className="text-2xl font-black text-emerald-600 font-mono">{poem.rhymeSafetyPercentage ?? 100}%</p>
-                <p className="text-[10px] font-bold text-gray-500 mt-0.5">نسبة التزام القافية</p>
+              <div className="border rounded-xl p-3 shadow-xs bg-black/40 border-emerald-500/20">
+                <p className="text-2xl font-black text-emerald-400 font-mono">{poem.rhymeSafetyPercentage ?? 100}%</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5">نسبة التزام القافية</p>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-3 shadow-xs">
-                <p className="text-2xl font-black text-royal-800 font-mono">{poem.verses.length}</p>
-                <p className="text-[10px] font-bold text-gray-500 mt-0.5">عدد الأبيات</p>
+              <div className="border rounded-xl p-3 shadow-xs bg-black/40 border-emerald-500/20">
+                <p className="text-2xl font-black text-[#dfba6b] font-mono">{poem.verses.length}</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5">عدد الأبيات</p>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-3 shadow-xs flex flex-col justify-center items-center">
-                <p className="text-sm font-serif font-bold text-royal-800 line-clamp-1">{poem.meterName}</p>
-                <p className="text-[10px] font-bold text-gray-500 mt-0.5">البحر المستعمل</p>
+              <div className="border rounded-xl p-3 shadow-xs flex flex-col justify-center items-center bg-black/40 border-emerald-500/20">
+                <p className="text-sm font-serif font-bold text-emerald-400 line-clamp-1">{poem.meterName}</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5">البحر المستعمل</p>
               </div>
             </div>
             
-            <p className="text-[10px] text-gray-400 text-center leading-relaxed italic border-t border-dashed border-gray-100 pt-2">
+            <p className="text-[10px] text-gray-400 text-center leading-relaxed italic border-t border-dashed border-gray-100 dark:border-white/10 pt-2">
               * تم تمرير القصيدة إلى المدقق العروضي الآلي لإصلاح أي كسور أو عيوب في القافية تلقائياً قبل تسليمها لك.
             </p>
           </div>
 
-          <div className="bg-white border border-[#b58d3d]/20 rounded-2xl shadow-sm p-5 overflow-hidden flex flex-col justify-between">
+          <div className="border rounded-2xl shadow-md p-5 overflow-hidden flex flex-col justify-between bg-[#102216]/60 border-[#dfba6b]/30">
             <div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-                <h3 className="font-bold text-royal-800 text-lg flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-[#dfba6b]">
                   <BookOpen className="w-5 h-5 text-[#8b1d2e]" />
                   الشرح والتحليل الأدبي
                 </h3>
@@ -485,14 +495,14 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
 
               {showExplanation && poem.explanation && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-amber-50/50 border border-amber-200/50 rounded-xl text-xs leading-relaxed text-amber-900 flex gap-2">
-                    <Info className="w-4 h-4 text-[#b58d3d] shrink-0" />
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs leading-relaxed text-amber-700 dark:text-[#dfba6b] flex gap-2">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
                     <div>
                       هذا التحليل والنقد البلاغي تم صياغته خصيصاً بواسطة ناقد أدبي ذكي من طراز رفيع لتوضيح عمق الصور البلاغية والمفردات المستعملة.
                     </div>
                   </div>
 
-                  <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-serif prose max-h-[380px] overflow-y-auto custom-scroll pr-1">
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap font-serif prose max-h-[380px] overflow-y-auto custom-scroll pr-1 text-gray-200">
                     {poem.explanation}
                   </div>
                 </div>
@@ -505,15 +515,15 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
               )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100 text-xs text-gray-500 flex items-center justify-between">
-              <span>تفعيلات البحر: <b className="font-serif text-[#1a472a]">{poem.feet}</b></span>
+            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-white/10 text-xs text-gray-400 flex items-center justify-between">
+              <span>تفعيلات البحر: <b className="font-serif text-[#1a472a] dark:text-[#dfba6b]">{poem.feet}</b></span>
             </div>
           </div>
 
           {/* Tips for recitation */}
-          <div className="bg-gradient-to-br from-royal-900 to-royal-800 text-white rounded-2xl p-5 border border-royal-700/50 shadow-sm relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#14311e] to-[#07150c] text-white rounded-2xl p-5 border border-[#dfba6b]/30 shadow-md relative overflow-hidden">
             <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/5 rounded-full pointer-events-none" />
-            <h4 className="font-bold text-sm text-[#b58d3d] mb-2 flex items-center gap-1.5">
+            <h4 className="font-bold text-sm text-[#dfba6b] mb-2 flex items-center gap-1.5">
               <MessageSquare className="w-4 h-4" />
               نصيحة للإلقاء العذب:
             </h4>
@@ -523,9 +533,9 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
           </div>
 
           {/* مجهر البلاغة والبيان التفصيلي بيتاً بيتاً */}
-          <div className="bg-[#fdfcf7] border border-[#b58d3d]/30 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h4 className="font-serif font-black text-[#1a472a] text-sm flex items-center gap-2">
+          <div className="border rounded-2xl p-5 shadow-md flex flex-col gap-4 bg-[#102216]/60 border-[#dfba6b]/30 text-white">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-3">
+              <h4 className="font-serif font-black text-[#1a472a] dark:text-[#dfba6b] text-sm flex items-center gap-2">
                 <Glasses className="w-4 h-4 text-[#8b1d2e]" />
                 المَجْهَرُ البَلَاغِيُّ التَّفْصِيلِيُّ
               </h4>
@@ -543,7 +553,7 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
             {analysisLoading && (
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <RefreshCw className="w-6 h-6 text-[#8b1d2e] animate-spin mb-2" />
-                <p className="text-[10px] text-gray-500 font-serif">يجري استخلاص الصور البيانية، الجناس، والطباق وتفكيك الأبيات...</p>
+                <p className="text-[10px] text-gray-400 font-serif">يجري استخلاص الصور البيانية، الجناس، والطباق وتفكيك الأبيات...</p>
               </div>
             )}
 
@@ -556,11 +566,11 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
                 {/* شرح بيتاً بيتاً */}
                 {analysisResult.lineByLine && (
                   <div className="flex flex-col gap-2.5">
-                    <span className="text-[11px] font-bold text-[#1a472a] bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">● شرح الأبيات بيتاً بيتاً:</span>
+                    <span className="text-[11px] font-bold text-[#1a472a] dark:text-[#dfba6b] bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">● شرح الأبيات بيتاً بيتاً:</span>
                     {analysisResult.lineByLine.map((lbl: any, idx: number) => (
-                      <div key={idx} className="bg-white p-2.5 rounded-xl border border-gray-100 text-[11px] leading-relaxed">
+                      <div key={idx} className={`p-2.5 rounded-xl border text-[11px] leading-relaxed ${isDarkMode ? 'bg-black/30 border-white/5' : 'bg-white border-gray-100'}`}>
                         <span className="font-bold text-[#8b1d2e] block mb-0.5">البيت {lbl.index}:</span>
-                        <p className="text-gray-700 font-serif">{lbl.explanation}</p>
+                        <p className="text-gray-700 dark:text-gray-300 font-serif">{lbl.explanation}</p>
                       </div>
                     ))}
                   </div>
@@ -569,13 +579,13 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
                 {/* الصور البلاغية */}
                 {analysisResult.rhetoricalImages && (
                   <div className="flex flex-col gap-2.5 mt-2">
-                    <span className="text-[11px] font-bold text-[#1a472a] bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">● الصور البيانية والجمالية:</span>
+                    <span className="text-[11px] font-bold text-[#1a472a] dark:text-[#dfba6b] bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">● الصور البيانية والجمالية:</span>
                     {analysisResult.rhetoricalImages.map((img: any, idx: number) => (
-                      <div key={idx} className="bg-white p-2.5 rounded-xl border border-gray-100 text-[11px] leading-relaxed">
+                      <div key={idx} className={`p-2.5 rounded-xl border text-[11px] leading-relaxed ${isDarkMode ? 'bg-black/30 border-white/5' : 'bg-white border-gray-100'}`}>
                         <span className="bg-amber-100 text-amber-900 text-[9px] px-1.5 py-0.5 rounded font-black">{img.type}</span>
                         <span className="text-gray-400 text-[9px] ml-1"> - البيت {img.verseIndex}:</span>
-                        <p className="font-serif font-semibold text-gray-800 my-1">"{img.phrase}"</p>
-                        <p className="text-gray-500 leading-normal">{img.analysis}</p>
+                        <p className="font-serif font-semibold text-gray-800 dark:text-amber-200 my-1">"{img.phrase}"</p>
+                        <p className="text-gray-500 dark:text-gray-400 leading-normal">{img.analysis}</p>
                       </div>
                     ))}
                   </div>
@@ -584,13 +594,13 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
                 {/* المحسنات البديعية */}
                 {analysisResult.embellishments && (
                   <div className="flex flex-col gap-2.5 mt-2">
-                    <span className="text-[11px] font-bold text-[#1a472a] bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">● المحسنات البديعية اللفظية والمعنوية:</span>
+                    <span className="text-[11px] font-bold text-[#1a472a] dark:text-[#dfba6b] bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">● المحسنات البديعية اللفظية والمعنوية:</span>
                     {analysisResult.embellishments.map((emb: any, idx: number) => (
-                      <div key={idx} className="bg-white p-2.5 rounded-xl border border-gray-100 text-[11px] leading-relaxed">
+                      <div key={idx} className={`p-2.5 rounded-xl border text-[11px] leading-relaxed ${isDarkMode ? 'bg-black/30 border-white/5' : 'bg-white border-gray-100'}`}>
                         <span className="bg-amber-100 text-amber-900 text-[9px] px-1.5 py-0.5 rounded font-black">{emb.type}</span>
                         <span className="text-gray-400 text-[9px] ml-1"> - البيت {emb.verseIndex}:</span>
-                        <p className="font-serif font-semibold text-gray-800 my-1">"{emb.phrase}"</p>
-                        <p className="text-gray-500 leading-normal">{emb.analysis}</p>
+                        <p className="font-serif font-semibold text-gray-800 dark:text-amber-200 my-1">"{emb.phrase}"</p>
+                        <p className="text-gray-500 dark:text-gray-400 leading-normal">{emb.analysis}</p>
                       </div>
                     ))}
                   </div>
@@ -600,7 +610,7 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace }: 
                   onClick={() => setAnalysisResult(null)}
                   className="text-center text-[10px] text-gray-400 hover:text-[#8b1d2e] py-1 border-t border-dashed border-gray-200 mt-2"
                 >
-                  إخلاق نتائج المجهر البلاغي
+                  إغلاق نتائج المجهر البلاغي
                 </button>
               </div>
             )}

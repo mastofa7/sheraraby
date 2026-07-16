@@ -3,11 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { db } from '../db';
 import { FirestoreUser } from '../types';
 import { addDevLog } from '../../src/backend-logic';
@@ -32,27 +27,39 @@ export class UsersService {
 
       if (userDoc.exists) {
         let user = userDoc.data() as FirestoreUser;
-        
-        // Ensure role is correctly updated if owner changes or is checked
-        if (user.email && this.isAdminEmail(user.email) && user.role !== 'admin') {
-          user.role = 'admin';
-          await db.collection('users').doc(uid).set({ role: 'admin' }, { merge: true });
+        let needsUpdate = false;
+
+        // Force 'admin' role if the email matches the owner email
+        const calculatedRole = (user.email && this.isAdminEmail(user.email)) ? 'admin' : (user.role || 'user');
+        if (user.role !== calculatedRole) {
+          user.role = calculatedRole;
+          needsUpdate = true;
+        }
+
+        // Force flat dailyLimit values (99999 for admin, 10 for normal user)
+        const expectedLimit = user.role === 'admin' ? 99999 : 10;
+        if (user.dailyLimit !== expectedLimit) {
+          user.dailyLimit = expectedLimit;
+          user.remainingToday = expectedLimit;
+          needsUpdate = true;
+        }
+
+        // Force planId to 'free'
+        if (user.planId !== 'free') {
+          user.planId = 'free';
+          needsUpdate = true;
         }
 
         // Auto-reset remaining usage if it's a new day
         if (user.lastResetDate !== today) {
-          const isOwner = user.email ? this.isAdminEmail(user.email) : false;
-          user.dailyLimit = isOwner ? 99999 : 10;
-          user.remainingToday = isOwner ? 99999 : 10;
+          user.remainingToday = user.dailyLimit;
           user.lastResetDate = today;
           user.updatedAt = now.toISOString();
-          
-          await db.collection('users').doc(uid).set({
-            dailyLimit: user.dailyLimit,
-            remainingToday: user.remainingToday,
-            lastResetDate: today,
-            updatedAt: now.toISOString()
-          }, { merge: true });
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await db.collection('users').doc(uid).set(user, { merge: true });
         }
         return user;
       }
@@ -61,10 +68,9 @@ export class UsersService {
       const email = authData?.email || '';
       const displayName = authData?.name || '';
       const photoURL = authData?.picture || '';
-      const isOwner = this.isAdminEmail(email);
-      const role = isOwner ? 'admin' : 'user';
+      const role = this.isAdminEmail(email) ? 'admin' : 'user';
       const planId = 'free';
-      const dailyLimit = isOwner ? 99999 : 10;
+      const dailyLimit = role === 'admin' ? 99999 : 10;
 
       const newUser: FirestoreUser = {
         uid,
@@ -73,7 +79,6 @@ export class UsersService {
         photoURL,
         role,
         planId,
-        subscriptionStatus: 'active',
         dailyLimit,
         remainingToday: dailyLimit,
         lastResetDate: today,
@@ -91,13 +96,6 @@ export class UsersService {
   }
 
   /**
-   * Update user plan (retained for signature compatibility, no-op).
-   */
-  static async updateUserPlan(uid: string, planId: string, subscriptionStatus: string = 'active'): Promise<FirestoreUser | null> {
-    return this.getOrCreateUser(uid);
-  }
-
-  /**
    * Decrement remaining today uses for user.
    */
   static async consumeUsage(uid: string): Promise<boolean> {
@@ -107,7 +105,7 @@ export class UsersService {
       if (!user) return false;
 
       // Admins bypass limit
-      if (user.role === 'admin' || (user.email && this.isAdminEmail(user.email))) return true;
+      if (user.role === 'admin') return true;
 
       if (user.remainingToday <= 0) {
         return false;

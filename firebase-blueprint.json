@@ -2,15 +2,14 @@
   "entities": {
     "user": {
       "title": "User Profile",
-      "description": "User subscription plan and profile details",
+      "description": "User profile details",
       "type": "object",
       "properties": {
         "planId": { "type": "string" },
         "email": { "type": "string" },
-        "subscriptionStatus": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
-      "required": ["planId", "subscriptionStatus"]
+      "required": ["planId"]
     },
     "poem": {
       "title": "Poem",
@@ -44,7 +43,7 @@
   "firestore": {
     "users/{userId}": {
       "schema": "user",
-      "description": "Store users profile and subscriptions"
+      "description": "Store user profiles"
     },
     "poems/{poemId}": {
       "schema": "poem",

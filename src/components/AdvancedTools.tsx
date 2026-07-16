@@ -200,18 +200,100 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
   };
 
   return (
-    <div className="bg-white border border-[#b58d3d]/25 rounded-2xl shadow-sm p-6" id="advanced-tools-container">
-      <div className="border-b border-gray-100 pb-4 mb-6">
-        <h2 className="text-xl font-bold text-[#1a472a] flex items-center gap-2 font-serif">
+    <div className="border border-[#dfba6b]/35 rounded-2xl shadow-xl p-6 relative overflow-hidden transition-all duration-300 bg-[#09140d]/90 backdrop-blur-md text-[#eefaf3]" id="advanced-tools-container">
+      <style>{`
+        #advanced-tools-container .bg-\\[\\#fcfaf7\\],
+        #advanced-tools-container .bg-white,
+        #advanced-tools-container .bg-amber-50\\/10,
+        #advanced-tools-container .bg-amber-50\\/20,
+        #advanced-tools-container .bg-red-50\\/10,
+        #advanced-tools-container .bg-indigo-50\\/10,
+        #advanced-tools-container .bg-red-50,
+        #advanced-tools-container .bg-gray-50,
+        #advanced-tools-container .bg-emerald-500\\/5,
+        #advanced-tools-container .bg-red-500\\/5,
+        #advanced-tools-container .bg-amber-500\\/5,
+        #advanced-tools-container .bg-emerald-50\\/10,
+        #advanced-tools-container .bg-amber-100\\/40,
+        #advanced-tools-container .bg-indigo-50 {
+          background-color: #0c1610 !important;
+          border-color: rgba(223, 186, 107, 0.25) !important;
+          color: #eefaf3 !important;
+        }
+
+        #advanced-tools-container .text-\\[\\#1a472a\\],
+        #advanced-tools-container .text-\\[\\#8b1d2e\\],
+        #advanced-tools-container .text-royal-800,
+        #advanced-tools-container .text-gray-800,
+        #advanced-tools-container .text-indigo-950,
+        #advanced-tools-container .text-amber-900,
+        #advanced-tools-container .text-emerald-900,
+        #advanced-tools-container .text-emerald-800 {
+          color: #dfba6b !important;
+        }
+
+        #advanced-tools-container .text-gray-500,
+        #advanced-tools-container .text-gray-600,
+        #advanced-tools-container .text-gray-700,
+        #advanced-tools-container .text-gray-400 {
+          color: #a3bdae !important;
+        }
+
+        #advanced-tools-container input,
+        #advanced-tools-container textarea,
+        #advanced-tools-container select {
+          background-color: #050a06 !important;
+          border-color: rgba(223, 186, 107, 0.25) !important;
+          color: #eefaf3 !important;
+        }
+
+        #advanced-tools-container input:focus,
+        #advanced-tools-container textarea:focus,
+        #advanced-tools-container select:focus {
+          border-color: rgba(223, 186, 107, 0.5) !important;
+        }
+
+        #advanced-tools-container button.bg-\\[\\#1a472a\\],
+        #advanced-tools-container button.bg-\\[\\#8b1d2e\\],
+        #advanced-tools-container button.bg-amber-600,
+        #advanced-tools-container button.bg-indigo-700 {
+          background-color: #1a472a !important;
+          border: 1px solid rgba(223, 186, 107, 0.35) !important;
+          color: #dfba6b !important;
+        }
+
+        #advanced-tools-container button.bg-\\[\\#1a472a\\]:hover,
+        #advanced-tools-container button.bg-\\[\\#8b1d2e\\]:hover,
+        #advanced-tools-container button.bg-amber-600:hover,
+        #advanced-tools-container button.bg-indigo-700:hover {
+          background-color: #0f2c18 !important;
+        }
+
+        #advanced-tools-container .hover\\:bg-white\\/50:hover {
+          background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        #advanced-tools-container .bg-royal-100 {
+          background-color: #1a472a !important;
+          color: #dfba6b !important;
+          border: 1px solid rgba(223, 186, 107, 0.3) !important;
+        }
+      `}</style>
+      <div className="absolute top-0 left-0 w-32 h-full bg-gradient-to-r from-amber-500/5 to-transparent pointer-events-none" />
+      
+      <div className="border-b border-gray-100 dark:border-white/5 pb-4 mb-6">
+        <h2 className={`text-xl font-bold flex items-center gap-2 font-serif ${isDarkMode ? 'text-[#dfba6b]' : 'text-[#1a472a]'}`}>
           <PenTool className="w-5 h-5 text-[#8b1d2e]" />
           أدواتُ البلاغة وعُلوم العَرُوض المتقدّمَة
         </h2>
-        <p className="text-xs text-gray-500 mt-1">تجهيزات واستشارات عروضية ونقدية متخصصة تحت إشراف نخبة من فحول اللغويين</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">تجهيزات واستشارات عروضية ونقدية متخصصة تحت إشراف نخبة من فحول اللغويين</p>
       </div>
 
       {remainingDailyUses !== undefined && (
-        <div className="mb-4 flex items-center justify-between text-xs font-serif font-bold bg-amber-500/5 p-3 rounded-xl border border-amber-500/10">
-          <span className="text-[#1a472a]">
+        <div className={`mb-4 flex items-center justify-between text-xs font-serif font-bold p-3 rounded-xl border ${
+          isDarkMode ? 'bg-[#dfba6b]/5 border-[#dfba6b]/10 text-[#dfba6b]' : 'bg-amber-500/5 border-amber-500/10 text-[#1a472a]'
+        }`}>
+          <span>
             المتبقي اليوم: {remainingDailyUses !== null ? `${remainingDailyUses} من ${isRegisteredUser ? 30 : 10}` : '...'}
           </span>
           {remainingDailyUses === 0 && (
@@ -221,7 +303,9 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
       )}
 
       {remainingDailyUses === 0 && (
-        <div className="mb-4 p-4 rounded-xl border text-xs leading-relaxed bg-red-50 border-red-200 text-red-900">
+        <div className={`mb-4 p-4 rounded-xl border text-xs leading-relaxed ${
+          isDarkMode ? 'bg-[#8b1d2e]/10 border-[#8b1d2e]/30 text-red-200' : 'bg-red-50 border-red-200 text-red-900'
+        }`}>
           <h4 className="font-bold font-serif mb-1">📜 كنانة المحاولات قد نفدت!</h4>
           <p className="font-serif italic text-[11px]">
             {isRegisteredUser
@@ -232,90 +316,156 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
       )}
 
       {/* Navigation for Sub-Tools */}
-      <div className="flex flex-wrap gap-1.5 border-b border-gray-100 pb-4 mb-6">
+      <div className="flex flex-wrap gap-1.5 border-b border-gray-100 dark:border-white/5 pb-4 mb-6">
         <button
           onClick={() => { setActiveSubTool('rhymes'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'rhymes' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'rhymes' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           مولد القوافي الذكي
         </button>
 
         <button
           onClick={() => { setActiveSubTool('prose2poem'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'prose2poem' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'prose2poem' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <BookOpen className="w-3.5 h-3.5" />
+          <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
           تحويل النثر إلى شعر
         </button>
 
         <button
           onClick={() => { setActiveSubTool('transmute'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'transmute' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'transmute' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <ArrowRightLeft className="w-3.5 h-3.5" />
+          <ArrowRightLeft className="w-3.5 h-3.5 text-[#b58d3d]" />
           تحويل البحر العروضي
         </button>
 
         <button
           onClick={() => { setActiveSubTool('rhymeChanger'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'rhymeChanger' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'rhymeChanger' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
           تغيير القافية تلقائياً
         </button>
 
         <button
           onClick={() => { setActiveSubTool('critique'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'critique' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'critique' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <Upload className="w-3.5 h-3.5" />
+          <Upload className="w-3.5 h-3.5 text-blue-400" />
           محلل الأسلوب والنقد
         </button>
 
         <button
           onClick={() => { setActiveSubTool('comparison'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'comparison' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'comparison' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <Scale className="w-3.5 h-3.5" />
+          <Scale className="w-3.5 h-3.5 text-purple-400" />
           مقارنة قصيدتين
         </button>
 
         <button
           onClick={() => { setActiveSubTool('analyzeProsody'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'analyzeProsody' ? 'bg-[#8b1d2e] text-white shadow-sm' : 'bg-red-50/50 text-[#8b1d2e] hover:bg-red-50'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'analyzeProsody' 
+              ? 'bg-[#8b1d2e] text-white shadow-md border border-red-500/30 animate-pulse' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-red-300 hover:bg-red-500/10' 
+                : 'bg-red-50 border border-red-100 text-[#8b1d2e] hover:bg-red-100'
+          }`}
         >
-          <Activity className="w-3.5 h-3.5" />
+          <Activity className="w-3.5 h-3.5 text-[#dfba6b]" />
           مصحح العروض والكسور
         </button>
 
         <button
           onClick={() => { setActiveSubTool('styleTransform'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'styleTransform' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50/50 text-amber-800 hover:bg-amber-50'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'styleTransform' 
+              ? 'bg-amber-600 text-white shadow-md border border-amber-500/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-amber-300 hover:bg-amber-500/10' 
+                : 'bg-amber-50 border border-amber-100 text-amber-800 hover:bg-amber-100'
+          }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5 text-[#dfba6b]" />
           مختبر التحويل الأسلوبي
         </button>
 
         <button
           onClick={() => { setActiveSubTool('originality'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'originality' ? 'bg-[#1a472a] text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'originality' 
+              ? 'bg-[#1a472a] text-white shadow-md border border-[#dfba6b]/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-gray-300 hover:bg-white/5' 
+                : 'bg-gray-50 border border-gray-100 text-gray-600 hover:bg-gray-100'
+          }`}
         >
-          <Glasses className="w-3.5 h-3.5" />
+          <Glasses className="w-3.5 h-3.5 text-cyan-400" />
           مقياس الأصالة والفرادة
         </button>
 
         <button
           onClick={() => { setActiveSubTool('inspiration'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'inspiration' ? 'bg-indigo-700 text-white shadow-sm' : 'bg-indigo-50/50 text-indigo-800 hover:bg-indigo-50'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'inspiration' 
+              ? 'bg-indigo-700 text-white shadow-md' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-indigo-300 hover:bg-indigo-500/10' 
+                : 'bg-indigo-50 border border-indigo-100 text-indigo-800 hover:bg-indigo-100'
+          }`}
         >
-          <Compass className="w-3.5 h-3.5" />
+          <Compass className="w-3.5 h-3.5 text-yellow-400" />
           باعث القرائح والإلهام
         </button>
 
         <button
           onClick={() => { setActiveSubTool('rhetorical'); setError(null); }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeSubTool === 'rhetorical' ? 'bg-[#8b1d2e] text-white shadow-sm' : 'bg-[#8b1d2e]/5 text-[#8b1d2e] hover:bg-[#8b1d2e]/10'}`}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeSubTool === 'rhetorical' 
+              ? 'bg-[#8b1d2e] text-white shadow-md border border-red-500/30' 
+              : isDarkMode 
+                ? 'bg-black/30 border border-white/5 text-[#dfba6b] hover:bg-red-500/10' 
+                : 'bg-[#8b1d2e]/5 border border-[#8b1d2e]/10 text-[#8b1d2e] hover:bg-[#8b1d2e]/10'
+          }`}
         >
           <FileText className="w-3.5 h-3.5" />
           محرك التحليل البلاغي
@@ -323,7 +473,9 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs mb-4">
+        <div className={`p-4 rounded-xl text-xs mb-4 border ${
+          isDarkMode ? 'bg-[#8b1d2e]/10 border-[#8b1d2e]/30 text-red-200' : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
           {error}
         </div>
       )}
