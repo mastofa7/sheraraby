@@ -5,9 +5,63 @@
 
 import fs from 'fs';
 import path from 'path';
+import { AsyncLocalStorage } from 'async_hooks';
 
 let isFirebaseAdminInitialized = false;
 let db: any = null;
+
+// Context to propagate current request's user ID token to REST operations
+export const dbContext = new AsyncLocalStorage<{ token?: string }>();
+
+// Cache for Google Cloud service account token
+let cachedServiceAccountToken: string | null = null;
+let tokenExpiryTime = 0;
+
+async function getServiceAccountToken(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedServiceAccountToken && tokenExpiryTime > now + 60000) {
+    return cachedServiceAccountToken;
+  }
+  try {
+    const res = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', {
+      headers: { 'Metadata-Flavor': 'Google' }
+    });
+    if (res.ok) {
+      const data: any = await res.json();
+      cachedServiceAccountToken = data.access_token || null;
+      if (data.expires_in) {
+        tokenExpiryTime = Date.now() + data.expires_in * 1000;
+      } else {
+        tokenExpiryTime = Date.now() + 3500 * 1000;
+      }
+      return cachedServiceAccountToken;
+    }
+  } catch (err) {
+    // Silent in local environment where metadata server doesn't exist
+  }
+  return null;
+}
+
+async function getAuthHeaders(config: any): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+
+  // 1. Check if we have a request-specific user token in AsyncLocalStorage context
+  const store = dbContext.getStore();
+  if (store && store.token) {
+    headers['Authorization'] = `Bearer ${store.token}`;
+    return headers;
+  }
+
+  // 2. Otherwise, check if we can fetch a Google Service Account token (Cloud Run environment)
+  const saToken = await getServiceAccountToken();
+  if (saToken) {
+    headers['Authorization'] = `Bearer ${saToken}`;
+  }
+
+  return headers;
+}
 
 function parseFirestoreValue(valueObj: any): any {
   if (!valueObj) return null;
@@ -61,9 +115,14 @@ async function getRestDocument(config: any, collection: string, docId: string): 
   try {
     const dbId = config.firestoreDatabaseId || '(default)';
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}/${docId}?key=${config.apiKey}`;
-    const res = await fetch(url);
+    const headers = await getAuthHeaders(config);
+    const res = await fetch(url, { headers });
     if (res.status === 404) return null;
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[RestFirestore] GET failed for ${collection}/${docId}: ${res.status} ${res.statusText} - ${errText}`);
+      return null;
+    }
     const doc: any = await res.json();
     const fields = doc.fields || {};
     const obj: any = {};
@@ -72,6 +131,7 @@ async function getRestDocument(config: any, collection: string, docId: string): 
     }
     return obj;
   } catch (err) {
+    console.error(`Error in getRestDocument for ${collection}/${docId}:`, err);
     return null;
   }
 }
@@ -95,11 +155,16 @@ async function setRestDocument(config: any, collection: string, docId: string, d
       }
     }
 
-    await fetch(patchUrl, {
+    const headers = await getAuthHeaders(config);
+    const res = await fetch(patchUrl, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ fields })
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[RestFirestore] PATCH failed for ${collection}/${docId}: ${res.status} ${res.statusText} - ${errText}`);
+    }
   } catch (err) {
     console.error(`Error in setRestDocument:`, err);
   }
@@ -109,7 +174,12 @@ async function deleteRestDocument(config: any, collection: string, docId: string
   try {
     const dbId = config.firestoreDatabaseId || '(default)';
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}/${docId}?key=${config.apiKey}`;
-    await fetch(url, { method: 'DELETE' });
+    const headers = await getAuthHeaders(config);
+    const res = await fetch(url, { method: 'DELETE', headers });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[RestFirestore] DELETE failed for ${collection}/${docId}: ${res.status} ${res.statusText} - ${errText}`);
+    }
   } catch (err) {
     console.error(`Error in deleteRestDocument:`, err);
   }
@@ -124,15 +194,21 @@ async function addRestDocument(config: any, collection: string, data: any) {
       if (val === null || val === undefined) continue;
       fields[key] = formatFirestoreValue(val);
     }
+    const headers = await getAuthHeaders(config);
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ fields })
     });
-    if (!res.ok) return { id: Math.random().toString(36).substring(7) };
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[RestFirestore] POST failed for ${collection}: ${res.status} ${res.statusText} - ${errText}`);
+      return { id: Math.random().toString(36).substring(7) };
+    }
     const doc: any = await res.json();
     return { id: doc.name.split('/').pop() };
   } catch (err) {
+    console.error(`Error in addRestDocument:`, err);
     return { id: Math.random().toString(36).substring(7) };
   }
 }
@@ -140,10 +216,15 @@ async function addRestDocument(config: any, collection: string, data: any) {
 async function fetchRestDocuments(config: any, collection: string, queryConstraints: any[] = []): Promise<any[]> {
   try {
     const dbId = config.firestoreDatabaseId || '(default)';
+    const headers = await getAuthHeaders(config);
     if (queryConstraints.length === 0) {
       const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbId}/documents/${collection}?key=${config.apiKey}&pageSize=1000`;
-      const res = await fetch(url);
-      if (!res.ok) return [];
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`[RestFirestore] GET failed for ${collection}: ${res.status} - ${errText}`);
+        return [];
+      }
       const data: any = await res.json();
       if (!data.documents) return [];
       return data.documents.map((doc: any) => {
@@ -202,10 +283,14 @@ async function fetchRestDocuments(config: any, collection: string, queryConstrai
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(queryBody)
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[RestFirestore] runQuery failed for ${collection}: ${res.status} - ${errText}`);
+      return [];
+    }
     const results: any = await res.json();
     if (!Array.isArray(results)) return [];
 
@@ -223,6 +308,7 @@ async function fetchRestDocuments(config: any, collection: string, queryConstrai
     });
     return documents;
   } catch (err) {
+    console.error(`Error in fetchRestDocuments for ${collection}:`, err);
     return [];
   }
 }

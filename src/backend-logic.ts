@@ -5,9 +5,17 @@
 
 import { GoogleGenAI, Type } from '@google/genai';
 
+// Central AI Models Configuration (Single Source of Truth)
+export const AI_MODELS = {
+  CREATIVE: 'gemini-3.5-flash' as const, // النموذج الإبداعي
+  ANALYTICAL: 'gemini-2.5-flash' as const, // النموذج التحليلي
+};
+
+export type GeminiModelType = typeof AI_MODELS.CREATIVE | typeof AI_MODELS.ANALYTICAL;
+
 export interface GeminiCallParams {
   toolName: string;
-  model?: string;
+  model: GeminiModelType;
   contents: string | any[];
   config?: any;
   ai: GoogleGenAI;
@@ -166,6 +174,31 @@ export function escapeLiteralNewlinesInStrings(str: string): string {
   return result;
 }
 
+export function escapeUnescapedQuotesInJson(str: string): string {
+  return str.replace(/:\s*"([\s\S]*?)"\s*(?=[,}\]])/g, (match, content) => {
+    let escapedContent = '';
+    let backslashCount = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i];
+      if (char === '\\') {
+        backslashCount++;
+        escapedContent += char;
+      } else if (char === '"') {
+        if (backslashCount % 2 === 0) {
+          escapedContent += '\\"';
+        } else {
+          escapedContent += char;
+        }
+        backslashCount = 0;
+      } else {
+        escapedContent += char;
+        backslashCount = 0;
+      }
+    }
+    return `: "${escapedContent}"`;
+  });
+}
+
 export function autoCloseJson(str: string): string {
   let openBraces = 0;
   let openBrackets = 0;
@@ -251,6 +284,9 @@ export function robustParseJson(text: string | null | undefined): any {
   // Escape literal raw newlines inside strings
   cleaned = escapeLiteralNewlinesInStrings(cleaned);
 
+  // Escape unescaped double quotes inside JSON strings to prevent standard parsing failure
+  cleaned = escapeUnescapedQuotesInJson(cleaned);
+
   // Replace trailing commas before } or ]
   cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
 
@@ -315,7 +351,13 @@ export function addDevLog(tool: string, rawResponse: string | null, errorReason:
 }
 
 export async function callGeminiWithJsonParsing(params: GeminiCallParams): Promise<any> {
-  const { toolName, model = 'gemini-3.5-flash', contents, config = {}, ai: aiInstance } = params;
+  const { toolName, model, contents, config = {}, ai: aiInstance } = params;
+  
+  if (!model) {
+    const errMsg = 'اسم نموذج Gemini مطلوب وغير محدد صراحة.';
+    addDevLog(toolName, null, errMsg);
+    throw new Error(errMsg);
+  }
   
   if (!aiInstance) {
     const errMsg = 'لم يتم العثور على مفتاح API الخاص بـ Gemini. يرجى تهيئة المفتاح في صفحة الإعدادات.';
@@ -338,10 +380,10 @@ export async function callGeminiWithJsonParsing(params: GeminiCallParams): Promi
     while (apiAttempt < maxAttempts) {
       try {
         // Model invocation for toolName
-        logger.log(`[Gemini API Call] [${toolName}] Attempt ${apiAttempt + 1}/${maxAttempts}...`);
+        logger.log(`[Gemini API Call] [${toolName}] Attempt ${apiAttempt + 1}/${maxAttempts} using model: ${model}...`);
         
         const result = await aiInstance.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model,
           contents: modifiedContents,
           config,
         });
@@ -539,7 +581,7 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
 
       const responseJson = await callGeminiWithJsonParsing({
         toolName: 'generate-poem (Unified Single Pass)',
-        model: 'gemini-3.5-flash',
+        model: AI_MODELS.CREATIVE,
         contents: prompt,
         ai: aiInstance,
         config: {
@@ -622,7 +664,7 @@ export async function handleLiteraryTool(toolAction: string, payload: any, aiIns
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'generate-rhymes',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -651,7 +693,7 @@ ${topic}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'suggest-best-rawiyy',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -684,7 +726,7 @@ ${meterName ? `- البحر الشعري المحدد: (${meterName})` : ''}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'suggest-rhyme-details',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -717,7 +759,7 @@ ${topic}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'suggest-meters-and-purposes',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -757,7 +799,7 @@ ${proseText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'prose-to-poem',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -791,7 +833,7 @@ ${formattedVerses}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'transmute-meter',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -825,7 +867,7 @@ ${formattedVerses}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'change-rhyme',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -863,7 +905,7 @@ ${formattedVerses}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'explain-and-extract-rhetoric',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -899,7 +941,7 @@ ${text}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'analyze-style',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -945,7 +987,7 @@ ${poem2}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'compare-poems',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -983,7 +1025,7 @@ ${poemText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'opposition-analyze',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1041,7 +1083,7 @@ ${newMeanings}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'opposition-generate',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1105,7 +1147,7 @@ ${originalPoem}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'industries-generate',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1156,7 +1198,7 @@ ${verseText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'analyze-prosody',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1201,7 +1243,7 @@ ${poemText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'style-analyze-transform',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1240,7 +1282,7 @@ ${poemText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'originality-analyze',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1281,7 +1323,7 @@ ${poemText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'inspiration-generate',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1318,7 +1360,7 @@ ${poemText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'verse-ai-modify',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.CREATIVE,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1362,7 +1404,7 @@ ${formattedVerses}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'workspace-poem-analysis',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1413,7 +1455,7 @@ ${poemText}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'rhetorical-analyze',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
@@ -1465,7 +1507,7 @@ ${formattedPoems}
 `;
     return await callGeminiWithJsonParsing({
       toolName: 'poet-profile-analysis',
-      model: 'gemini-3.5-flash',
+      model: AI_MODELS.ANALYTICAL,
       contents: prompt,
       ai: aiInstance,
       config: {
