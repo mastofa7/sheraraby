@@ -45,6 +45,7 @@ export interface GenerationParams {
   rhymeSystem: RhymeSystem; // نظام القافية
   customRhymeLetter?: string; // حرف الروي المخصص يدويًا
   customRhymeType?: string; // نوع القافية المختار من لوحة القافية (موحدة، لكل مقطوعة، مزدوجة، متناوبة، إلخ)
+  rhymeMovement?: string; // حركة الروي المخصصة
 }
 
 export interface PoemVerse {
@@ -60,6 +61,7 @@ export interface GeneratedPoem {
   meterName: string;
   feet: string;
   rhymeLetter: string;
+  rhymeMovement?: string; // حركة الروي المخصصة
   purpose: string;
   poetSimulated?: string;
   isOpposition?: boolean;

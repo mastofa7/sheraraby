@@ -3,6 +3,8 @@ import { Sparkles, ArrowRightLeft, BookOpen, HelpCircle, PenTool, Search, Messag
 import { PoeticMeterInfo } from '../types';
 import TurnstileWidget from './TurnstileWidget';
 import { apiFetch } from '../firebase';
+import { AIProgressTracker } from './AIProgressTracker';
+import { useRef } from 'react';
 
 interface AdvancedToolsProps {
   meters: PoeticMeterInfo[];
@@ -19,6 +21,8 @@ interface AdvancedToolsProps {
 export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemToHistory, turnstileSiteKey, isDarkMode, onUpdateRemainingUses, remainingDailyUses, isRegisteredUser }: AdvancedToolsProps) {
   const [activeSubTool, setActiveSubTool] = useState<'rhymes' | 'prose2poem' | 'transmute' | 'rhymeChanger' | 'critique' | 'comparison' | 'analyzeProsody' | 'styleTransform' | 'originality' | 'inspiration' | 'rhetorical'>('rhymes');
   const [loading, setLoading] = useState(false);
+  const [localAIStatus, setLocalAIStatus] = useState<string | null>(null);
+  const clientIdRef = useRef<string>(`client-${Math.random().toString(36).substr(2, 9)}`);
   const [error, setError] = useState<string | null>(null);
 
   // Turnstile state
@@ -94,6 +98,7 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
       return;
     }
     setLoading(true);
+    setLocalAIStatus('تم استلام الطلب.');
     setError(null);
     try {
       const response = await apiFetch('/api/literary-tool', {
@@ -107,6 +112,7 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
           turnstileToken
         }),
       });
+      setLocalAIStatus('تم استلام الاستجابة.');
       const data = await response.json();
       if (data && typeof data.remainingDailyUses === 'number') {
         onUpdateRemainingUses?.(data.remainingDailyUses);
@@ -1489,7 +1495,9 @@ export function AdvancedTools({ meters, currentPoem, onApplyNewPoem, onSavePoemT
           )}
         </div>
       )}
-    </div>
+    
+      <AIProgressTracker isActive={loading} clientId={clientIdRef.current} localStatus={localAIStatus} error={error} />
+</div>
   );
 }
 

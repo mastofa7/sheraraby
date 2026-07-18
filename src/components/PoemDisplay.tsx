@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { GeneratedPoem } from '../types';
 import { Copy, FileText, Share2, Printer, Info, Check, Sparkles, RefreshCw, ChevronDown, ChevronUp, BookOpen, MessageSquare, ShieldCheck, Activity, Glasses, HelpCircle } from 'lucide-react';
+import { RHYME_MOVEMENTS } from '../rhymeData';
 
 interface PoemDisplayProps {
   poem: GeneratedPoem;
@@ -422,7 +423,10 @@ export default function PoemDisplay({ poem, onReset, onOpenRevisionWorkspace, is
                 </div>
                 <div>
                   <p className="text-[#dfba6b] font-semibold text-[10px] uppercase">الروي والقافية</p>
-                  <p className="font-bold text-sm">حرف {poem.rhymeLetter || 'موحد'}</p>
+                  <p className="font-bold text-sm">
+                    حرف {poem.rhymeLetter || 'موحد'}
+                    {poem.rhymeMovement && ` (${RHYME_MOVEMENTS.find(m => m.id === poem.rhymeMovement)?.name || ''})`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[#dfba6b] font-semibold text-[10px] uppercase">توليد الذكاء</p>

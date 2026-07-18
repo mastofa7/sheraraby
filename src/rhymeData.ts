@@ -16,6 +16,23 @@ export const ARABIC_LETTERS = [
   'أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'
 ];
 
+export interface RhymeMovementOption {
+  id: string;
+  name: string;
+  description: string;
+  example: string;
+}
+
+export const RHYME_MOVEMENTS: RhymeMovementOption[] = [
+  { id: 'sukun', name: 'الروي الساكن', description: 'سكون الروي في نهاية الأبيات بحسب مقتضى الوزن والقافية.', example: 'قَمَرْ، قَدَرْ' },
+  { id: 'fatha', name: 'الروي المفتوح', description: 'فتح حرف الروي وتحريكه بالفتح لجمال النطق العروضي.', example: 'قَمَرَا، خَبَرَا، قَدَرَ' },
+  { id: 'damma', name: 'الروي المضموم', description: 'ضم حرف الروي وتحريكه بالضم لبيان الجرس الموسيقي القوي.', example: 'عُمُرُ، قَدَرُ' },
+  { id: 'kasra', name: 'الروي المكسور', description: 'كسر حرف الروي وتحريكه بالكسر للتعبير عن الانسيابية والرقة.', example: 'شِعْرِ، فِكْرِ' },
+  { id: 'alif', name: 'الروي متبوع بألف الإطلاق', description: 'إلحاق ألف الإطلاق لإشباع الفتحة المديدة في القوافي المطلقة.', example: 'سَمَاءَا، وَفَاءَا' },
+  { id: 'waw', name: 'الروي متبوع بواو الإطلاق', description: 'إلحاق واو الإطلاق لإشباع الضمة المديدة في القوافي المطلقة.', example: 'يَدْعُو، يَرْجُو' },
+  { id: 'yaa', name: 'الروي متبوع بياء الإطلاق', description: 'إلحاق ياء الإطلاق لإشباع الكسرة المديدة في القوافي المطلقة.', example: 'البَشِيرِي، المَصِيرِي' },
+];
+
 export const RHYME_TYPES_INFO = [
   {
     id: 'unified',

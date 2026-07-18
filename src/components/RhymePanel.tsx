@@ -8,6 +8,7 @@ import {
   ARABIC_LETTERS,
   RHYME_TYPES_INFO,
   RHYME_LEXICON,
+  RHYME_MOVEMENTS,
   suggestBestRhymeLetter
 } from '../rhymeData';
 import { Sparkles, HelpCircle, BookOpen, Check, Search, AlertCircle, Copy, FileText, ChevronDown, ChevronUp, Layers } from 'lucide-react';
@@ -23,6 +24,8 @@ interface RhymePanelProps {
   purpose: string;
   description: string;
   isDarkMode?: boolean;
+  rhymeMovement?: string;
+  onChangeRhymeMovement?: (val: string) => void;
 }
 
 export const RhymePanel = React.memo(function RhymePanel({
@@ -34,7 +37,9 @@ export const RhymePanel = React.memo(function RhymePanel({
   onChangeCustomRhymeType,
   purpose,
   description,
-  isDarkMode = true
+  isDarkMode = true,
+  rhymeMovement = 'sukun',
+  onChangeRhymeMovement
 }: RhymePanelProps) {
   const [lexiconSearch, setLexiconSearch] = useState<string>('');
   const [suggestionMessage, setSuggestionMessage] = useState<{ letter: string; reason: string } | null>(null);
@@ -214,6 +219,44 @@ export const RhymePanel = React.memo(function RhymePanel({
               );
             })}
           </div>
+
+          {/* حركة الروي (Rhyme Movement) */}
+          {(rhymeSystem === 'custom' || customRhymeLetter) && (
+            <div className="flex flex-col gap-2 mt-4 animate-fade-in" id="rhyme-movement-selection">
+              <label className="font-serif font-bold text-xs text-[#dfba6b] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#dfba6b]" />
+                ٣. حَرَكَةُ الرَّوِيِّ المُلْتَزَمَةِ
+              </label>
+              <p className="text-[10px] text-gray-400">
+                حدد التشكيل الأخير لحرف الروي في نهاية الأبيات ليلتزم به نظام التوليد التزاماً تاماً:
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <select
+                  value={rhymeMovement}
+                  onChange={(e) => onChangeRhymeMovement?.(e.target.value)}
+                  className={`w-full p-2.5 rounded-xl text-xs font-serif font-bold focus:outline-none focus:ring-1 focus:ring-[#dfba6b] cursor-pointer ${
+                    isDarkMode 
+                      ? 'bg-black/45 border border-[#dfba6b]/20 text-white' 
+                      : 'bg-white border border-gray-200 text-gray-800'
+                  }`}
+                >
+                  {RHYME_MOVEMENTS.map((mov) => (
+                    <option key={mov.id} value={mov.id} className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-gray-800'}>
+                      {mov.name} ({mov.example})
+                    </option>
+                  ))}
+                </select>
+                <div className={`p-2 rounded-lg border text-[10px] leading-relaxed ${
+                  isDarkMode 
+                    ? 'bg-black/20 border-[#dfba6b]/10 text-gray-400' 
+                    : 'bg-gray-50 border-gray-100 text-gray-600'
+                }`}>
+                  <span className="font-bold text-[#dfba6b] block mb-0.5">شرح حركة القافية المحددة:</span>
+                  {RHYME_MOVEMENTS.find(m => m.id === rhymeMovement)?.description}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

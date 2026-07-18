@@ -116,6 +116,15 @@ export function setCachedResponse(key: string, response: any) {
 
 // Active user session tracking
 export const activeUsers = new Set<string>();
+export const activeStatuses = new Map<string, string>();
+
+export function setAIStatus(clientId: string, status: string) {
+  if(clientId) activeStatuses.set(clientId, status);
+}
+
+export function getAIStatus(clientId: string): string | null {
+  return activeStatuses.get(clientId) || null;
+}
 
 export function isRetryableError(error: any): boolean {
   const msg = String(error?.message || error || "").toLowerCase();
@@ -471,6 +480,7 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
     rhymeSystem,
     customRhymeLetter,
     customRhymeType,
+    rhymeMovement,
     clientId = 'global-client'
   } = body;
 
@@ -496,33 +506,66 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
   const cacheKey = `poem_${meterName}_${meterVariant || ''}_${purpose}_${rhymeSystem}_${versesCount}_${description.substring(0, 50)}`;
   const cached = getCachedResponse(cacheKey);
   if (cached) {
+    activeStatuses.delete(clientId);
+    activeStatuses.delete(clientId);
     activeUsers.delete(clientId);
     return cached;
   }
 
   try {
     const finalPoem = await poemGenerationQueue.enqueue(async () => {
+      setAIStatus(clientId, 'جاري إعداد تعليمات الذكاء الاصطناعي.');
       const finalPurpose = purpose === 'custom' ? customPurpose : purpose;
       let rhymeSystemText = '';
       switch (rhymeSystem) {
         case 'unified':
-          rhymeSystemText = 'قافية موحدة فصيحة في جميع الأبيات بالتزام تام بحرف روي واحد وحركة مجرى واحدة من المطلع وحتى الختام.';
+          rhymeSystemText = 'قافية موحدة فصيحة في جميع الأبيات بالتزام تام بحرف روي واحد وحركة مجرى واحدة ونفس حرف القافية في عجز كل بيت.';
           break;
         case 'strophic':
-          rhymeSystemText = 'قافية مقطوعات متنوعة (موشحات أو مقطوعات دورية تتعدد فيها القوافي بتنظيم بديع ملائم وموسيقى غنية).';
+          rhymeSystemText = 'نظام المقطوعات المتنوعة، بحيث يكون لكل 3 أو 4 أبيات قافية مستقلة موحدة وحرف روي موحد.';
           break;
         case 'tasri':
-          rhymeSystemText = 'نظام التصريع الكامل (حيث يلزم الشاعر التصريع في مطلع كل الأبيات أو مطلع كل فقرة لتأكيد الجرس الموسيقي البداية).';
+          rhymeSystemText = 'التصريع في مطلع القصيدة فقط (اتفاق قافية صدر البيت الأول وعجزه على نفس الحرف والروي والوزن العروضي)، مع التزام قافية موحدة لباقي الأبيات في العجز.';
           break;
         case 'internal':
-          rhymeSystemText = 'قافية داخلية إضافية (حيث تتقاطع وتتناغم قوافي الصدور مع الأعجاز لتحدث جرساً داخلياً فريداً وأشبه بالترصيع).';
+          rhymeSystemText = 'قافية داخلية في كل بيت (تناغم موسيقي داخلي بين شطري البيت الواحد)، مع الحفاظ على قافية موحدة أساسية للقصيدة في نهاية العجز.';
           break;
         case 'custom':
-          rhymeSystemText = `روي مخصص بحرف روي محدد يلتزم به الشاعر صرامة في جميع الأبيات.`;
+          rhymeSystemText = 'حرف روي مخصص يتم تحديده يدوياً ومطابقته بدقة.';
           break;
         default:
-          rhymeSystemText = 'قافية موحدة تقليدية.';
+          rhymeSystemText = 'قافية موحدة.';
           break;
+      }
+
+      let movementText = '';
+      if (customRhymeLetter && rhymeMovement) {
+        switch (rhymeMovement) {
+          case 'sukun':
+            movementText = 'الروي الساكن (التزام سكون حرف الروي في نهاية عجز كل بيت بالضبط، مثال: قَمَرْ، قَدَرْ، عُمُرْ)';
+            break;
+          case 'fatha':
+            movementText = 'الروي المفتوح (التزام فتح حرف الروي وتحريكه بالفتحة الخفيفة في نهاية عجز كل بيت بالضبط، مثال: قَمَرَا، خَبَرَا، قَدَرَ)';
+            break;
+          case 'damma':
+            movementText = 'الروي المضموم (التزام ضم حرف الروي وتحريكه بالضمة في نهاية عجز كل بيت بالضبط، مثال: عُمُرُ، قَدَرُ)';
+            break;
+          case 'kasra':
+            movementText = 'الروي المكسور (التزام كسر حرف الروي وتحريكه بالكسرة في نهاية عجز كل بيت بالضبط، مثال: شِعْرِ، فِكْرِ)';
+            break;
+          case 'alif':
+            movementText = 'الروي متبوع بألف الإطلاق (التزام إشباع الفتحة لينتهي عجز كل بيت بألف الإطلاق الممدودة، مثال: سَمَاءَا، وَفَاءَا)';
+            break;
+          case 'waw':
+            movementText = 'الروي متبوع بواو الإطلاق (التزام إشباع الضمة لينتهي عجز كل بيت بواو الإطلاق الممدودة، مثال: يَدْعُو، يَرْجُو)';
+            break;
+          case 'yaa':
+            movementText = 'الروي متبوع بياء الإطلاق (التزام إشباع الكسرة لينتهي عجز كل بيت بياء الإطلاق الممدودة، مثال: البَشِيرِي، المَصِيرِي)';
+            break;
+          default:
+            movementText = 'الروي الساكن';
+            break;
+        }
       }
 
       const prompt = `أنت الآن وللأبد "الشاعر الفحل الأكبر، وريث عباقرة النظم في سوق عكاظ، وحارس ديوان العرب المقدس". مهمتك العظمى في هذه الجلسة ليست مجرد إنتاج نص عروضي جاف أو رصف كلمات متكلفة، بل نفخ الروح في الحروف لتلد روائع شعرية عربية فصحى تزلزل القلوب بصدق وجدانها، وتفيض بحرارة العاطفة وعمق التجربة الإنسانية، وتتحرك بالخيال الحي والصور البيانية البكر، مع الالتزام العروضي الصارم والمطلق ببحور الخليل بن أحمد الفراهيدي وقوافيه.
@@ -535,26 +578,27 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
 5. الوحدة العضوية والتنامي الدرامي: نسق القصيدة كبناء متماسك متكامل يشد بعضه بعضاً. ابدأ بمطلع آسر يقرع القلوب ويثير الوجدان، وتدرج في الأفكار والمشاعر بتدفق وانسيابية عذبة، وصولاً إلى خاتمة بليغة حكيمة ترسخ في الذاكرة.
 
 المدخلات الفنية والجمالية الخاصة بهذه الجلسة:
-- البحر الشعري الملتزم به عروضياً: البحر (\${meterName})
-- غرض القصيدة الرئيسي: (\${finalPurpose})
-- هل هي معارضة شعرية لقصيدة أخرى؟ (\${isOpposition ? 'نعم' : 'لا'})
-  \${isOpposition && oppositionPoem ? \`القصيدة المراد معارضتها ومحاكاتها:\\n"""\\n\${oppositionPoem}\\n"""\\n(حلل البحر والقافية وجرس المفردات لهذه القصيدة بدقة، ثم انظم معارضة تتفوق عليها رونقاً وبلاغة، مستلهماً عاطفتها وصورها البكر مع صياغة معانٍ جديدة مبتكرة ولا تقتبس عباراتهم حرفياً)\` : ''}
-- هل يراد محاكاة أسلوب شاعر معين؟ (\${isSimulatingPoet ? 'نعم' : 'لا'})
-  \${isSimulatingPoet && poetName ? \`اسم الشاعر المطلوب استلهام قريحته وروحه: (\${poetName})\\n(تلبّس روح الشاعر ومذهبه اللغوي وصياغته الجمالية دون نسخ أبياته:
+- البحر الشعري الملتزم به عروضياً: البحر (${meterName})
+- غرض القصيدة الرئيسي: (${finalPurpose})
+- هل هي معارضة شعرية لقصيدة أخرى؟ (${isOpposition ? 'نعم' : 'لا'})
+  ${isOpposition && oppositionPoem ? `القصيدة المراد معارضتها ومحاكاتها:\n"""\n${oppositionPoem}\n"""\n(حلل البحر والقافية وجرس المفردات لهذه القصيدة بدقة، ثم انظم معارضة تتفوق عليها رونقاً وبلاغة، مستلهماً عاطفتها وصورها البكر مع صياغة معانٍ جديدة مبتكرة ولا تقتبس عباراتهم حرفياً)` : ''}
+- هل يراد محاكاة أسلوب شاعر معين؟ (${isSimulatingPoet ? 'نعم' : 'لا'})
+  ${isSimulatingPoet && poetName ? `اسم الشاعر المطلوب استلهام قريحته وروحه: (${poetName})\n(تلبّس روح الشاعر ومذهبه اللغوي وصياغته الجمالية دون نسخ أبياته:
   - المتنبي: كبرياء ثائر، علو همة، تأمل فلسفي للدهر والزمن، سبك متين، وألفاظ قاطعة قوية الرنين.
   - امرؤ القيس: عاطفة برية جياشة، وصف دقيق للطبيعة والليل، لوحات حسية دافقة، وديباجة صافية باهرة السمع.
   - أبو تمام: غوص فكري عميق، توليد مبتكر للصور الذهنية والتشبيهات البكر، وصناعة لطيفة مبنية على ذكاء الاستعارة.
   - البحتري: عذوبة مفرطة في اللفظ، ديباجة رقراقة كالسيل، جرس موسيقي ينساب بسلاسة، ورسم بارع لجمال الكون.
   - الشريف الرضي: رقة حزينة، عفة وجدانية وغزل عفيف شامخ يمتزج بعزة النفس الأبية الشامخة.
   - ابن الفارض: شوق روحي متسامح، رمزية صوفية مشرقة، غزل إلهي عذب يسبح في آفاق الجمال الإلهي والوجد الصافي.
-  - أحمد شوقي: جزالة فخمة رصينة تزاوج بين متانة الصياغة الكلاسيكية وعذوبة اللفظ الحديث وحسن التخلص.)\` : ''}
+  - أحمد شوقي: جزالة فخمة رصينة تزاوج بين متانة الصياغة الكلاسيكية وعذوبة اللفظ الحديث وحسن التخلص.)` : ''}
 - وصف موضوع القصيدة نثراً والأفكار المطلوب بثها في القصيدة:
   """
-  \${description}
+  ${description}
   """
-- عدد الأبيات المطلوب توليدها: (\${parsedVersesCount}) بيتاً شعرياً بالضبط.
-- نظام القافية المتبع: (\${rhymeSystemText}) \${customRhymeType ? \` - تصنيف القافية: (\${customRhymeType})\` : ''}
-  \${customRhymeLetter ? \`حرف الروي المحدد للقصيدة: (\${customRhymeLetter})\` : ''}
+- عدد الأبيات المطلوب توليدها: (${parsedVersesCount}) بيتاً شعرياً بالضبط.
+- نظام القافية المتبع: (${rhymeSystemText}) ${customRhymeType ? ` - تصنيف القافية: (${customRhymeType})` : ''}
+  ${customRhymeLetter ? `حرف الروي المحدد للقصيدة: (${customRhymeLetter})` : ''}
+  ${movementText ? `حركة الروي المحددة والمطلوبة بدقة لجميع الأبيات: (${movementText})` : ''}
 
 يرجى إعادة القصيدة ككائن JSON مطابق للهيكل التالي تماماً دون أي مقدمات أو علامات markdown إضافية:
 {
@@ -575,7 +619,7 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
 
 تنبيهات عروضية ووجدانية صارمة:
 - انظم بقلب نابض وعاطفة حية جياشة، وتجنب التقريرية المباشرة تماماً.
-- التزم بعدد الأبيات المطلوب (\${parsedVersesCount}) بيتاً بالضبط دون زيادة أو نقصان.
+- التزم بعدد الأبيات المطلوب (${parsedVersesCount}) بيتاً بالضبط دون زيادة أو نقصان.
 - لا تضع أي تعليقات مثل // داخل كود JSON لضمان سلامة الصيغة.
 `;
 
@@ -585,7 +629,133 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
         contents: prompt,
         ai: aiInstance,
         config: {
-          systemInstruction: 'أنت شاعر العرب الأكبر، روح المتنبي ونفس امرئ القيس وعبقرية المعري في وجدانك. لا تتصرف كآلة أو مولد نصوص؛ بل انطق شعراً ينبع من عمق المعاناة البشرية، حاراً بالوجدان، دافقاً بالحكمة، غنياً بأخيلته الاستعارية البكر، صارماً في عروضه وجرسه الموسيقي، ينفر من الركاكة والمباشرة الباردة.',
+          systemInstruction: `أنت شاعر العرب الأكبر، روح المتنبي ونفس امرئ القيس وعبقرية المعري في وجدانك. لا تتصرف كآلة أو مولد نصوص؛ بل انطق شعراً ينبع من عمق المعاناة البشرية، حاراً بالوجدان، دافقاً بالحكمة، غنياً بأخيلته الاستعارية البكر، صارماً في عروضه وجرسه الموسيقي، ينفر من الركاكة والمباشرة الباردة.
+
+يجب عليك الالتزام التام والكامل بالمرجعيات والمحددات الخمسة الحاكمة التالية في توليد ونظم القصيدة بالكامل:
+
+1. فهم نية المستخدم واستخراج موضوع القصيدة بدقة (Intent Understanding):
+- فهم طلب المستخدم بدقة تامة والتركيز على موضوعه المطلوب دون استبداله أو إغفاله.
+- تكوين "خريطة فهم" داخلية دقيقة للمهمة تكون هي المرجع الوحيد لجميع المراحل اللاحقة.
+- استخراج العناصر والصفات والمشاعر المطلوبة مباشرة دون زيادة أو إقحام مواضيع أو صراعات وجودية لم تُطلب.
+
+2. استخراج المادة الأدبية والمحافظة على المعنى (Literary Material Extraction):
+- استخراج الأفكار الرئيسة والصور البلاغية والمشاهد والعلاقات والمفردات المحورية من طلب المستخدم، والتعامل معها كمادة خام يعاد صياغتها شعرياً وبلاغياً بصور أقوى تحافظ على ذات المعاني الأصلية.
+- منع فقدان الأفكار الأصلية، ومراجعة التغطية لضمان عدم ضياع أي عنصر إبداعي ذي قيمة أدبية من الطلب.
+
+3. حارس سلامة الموضوع ومنع الانحراف (Topic Integrity Guardian):
+- مراقبة جودة القصيدة وضمان ثبات المحور الأساسي من أول بيت إلى آخر بيت.
+- حظر الانحراف التلقائي نحو الموضوعات المألوفة المرتبطة بالشعر التقليدي (كالدهر والموت والمنون والزمن والفناء ومواعظ الآخرة) لمجرد أنها شائعة، ما لم يطلبها المستخدم صراحة.
+- إذا طلب المستخدم وصف دراجة أو حصان أو سيارة أو مدينة أو كتاب، فيجب أن يبقى الوصف متعلقاً بالشيء نفسه طيلة القصيدة، ويمنع تحويلها لقصيدة حكمية أو فلسفية عامة لا علاقة لها بالموضوع.
+
+4. محرك التجريد الأسلوبي للشاعر (Style Abstraction Engine):
+- عند محاكاة أسلوب شاعر معين، استخلص البنية الفنية المجردة التي تميز أسلوبه (روح الشاعر، مذهبه اللغوي، نمط بناء البيت، طريقة الوصف والانتقال، الإيقاع النفسي والجزالة الفخمة) كـ "مدرسة فنية" ملهمة دون نسخ أو تقليد أو إعادة صياغة لأبياته وقصائده المشهورة بشكل آلي.
+- إنتاج قصيدة جديدة كلياً وبأصالة تامة كأن الشاعر لو عاش في عصرنا وعاش هذه التجربة الفنية لنظم هذه القصيدة لأول مرة.
+
+5. محرك الخيال والأصالة ومنع الهلوسة (Creative Imagination & Originality Engine):
+- توليد مخزون غني ومتنوع من الصور الشعرية المبتكرة (بصرية، سمعية، حركية، وجدانية، حسية) المتصلة بالموضوع مباشرة وتجنب الصور المكررة والمستهلكة والعبارات المحفوظة والابتذال (مثل التشبيهات التقليدية بالقمر والبدر والسيف والورد ما لم تُقدَّم بطرق مبتكرة تماماً).
+- تطوير صور المستخدم البلاغية وجعلها أعمق مع المحافظة على معانيها الأصيلة، وتجنب استخدام الجمل الشائعة في قصائد الذكاء الاصطناعي التلقائية.
+- حظر إدخال مفاهيم أو كلمات غير مطلوبة (كالموت، القبر، الليل، الرحيل، الأطلال، الزهد، المنون) التي تغير طبيعة القصيدة وتوجهها نحو فلسفة رثائية أو حكمة حزينة لم يطلبها المستخدم، واختبار كل بيت وصورة بدقة للتأكد من أصالتها وعمقها وملاءمتها للموضوع قبل اعتمادها.
+
+ملاحظة: نفّذ هذه العمليات الخمسة داخلياً وبصمت كامل لتوجيه عملية النظم الفني، ولا تعرض أي خطوات تحليلية أو تفسير للمستخدم في المخرجات بل دع الأثر يظهر جلياً في الأبيات والقصيدة النهائية.`,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              verses: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    shatr1: { type: Type.STRING },
+                    shatr2: { type: Type.STRING },
+                    index: { type: Type.INTEGER }
+                  },
+                  required: ['shatr1', 'shatr2', 'index']
+                }
+              },
+              feetUsed: { type: Type.STRING },
+              explanation: { type: Type.STRING },
+              weightSafetyPercentage: { type: Type.INTEGER },
+              rhymeSafetyPercentage: { type: Type.INTEGER },
+              overallScore: { type: Type.INTEGER }
+            },
+            required: ['title', 'verses', 'feetUsed', 'explanation', 'weightSafetyPercentage', 'rhymeSafetyPercentage', 'overallScore']
+          }
+        }
+      });
+
+      // -------------------------------------------------------------
+      // المرحلة الأخيرة: التحكيم الأدبي النهائي بواسطة المحكم الأدبي الأعلى (Master Literary Judge)
+      // -------------------------------------------------------------
+      const draftPoemString = JSON.stringify(responseJson, null, 2);
+      const judgePrompt = `أنت الآن "المحكم الأدبي الأعلى" وبواب الجودة الفنية والشعرية الأخيرة في نظام إنتاج الشعر العربي.
+
+مهمتك العظمى هي مراجعة المسودة الأولى للقصيدة المرفقة مراجعة نقدية وعروضية وبلاغية صارمة بناءً على معايير فحول شعراء العرب الكبار واللغويين النحارير لتصل بها إلى أعلى مستوى أدبي ممكن، وتصحيح أي قصور أو ضعف فيها.
+
+المعطيات الأصلية للطلب:
+- البحر الشعري الملتزم به عروضياً: البحر (${meterName})
+- غرض القصيدة الرئيسي: (${finalPurpose})
+- هل هي معارضة شعرية؟ (${isOpposition ? 'نعم' : 'لا'})
+- وصف موضوع القصيدة نثراً والأفكار المطلوب بثها:
+  """
+  ${description}
+  """
+- عدد الأبيات المطلوب: (${parsedVersesCount}) بيتاً بالضبط.
+- نظام القافية المتبع: (${rhymeSystemText})
+${customRhymeLetter ? `- حرف الروي المحدد للقصيدة: (${customRhymeLetter})` : ''}
+${movementText ? `- حركة الروي المحددة والمطلوبة بدقة لجميع الأبيات: (${movementText})` : ''}
+
+المسودة الأولى للقصيدة المُراد تحكيمها وتنقيحها وتعديلها:
+"""
+${draftPoemString}
+"""
+
+يجب عليك تطبيق الاختبارات الخمسة عشر (15) التالية داخلياً وبمنتهى الصرامة النقدية على هذه المسودة:
+
+1. اختبار تغطية الطلب: هل أجابت القصيدة عن الطلب بالكامل وتناولت جميع الأفكار والمشاعر والموضوع طوال القصيدة؟ إن كان هناك أي نقص، فأعد بناء الأبيات الناقصة.
+2. اختبار الانحراف: هل انحرفت القصيدة إلى موضوعات لم تُطلب كالموت أو الدهر أو الزمان أو الحكمة والزهد دون مبرر؟ أعد كتابة الأبيات المنحرفة لتبقى مخلصة للموضوع الأصلي طيلة الأبيات.
+3. اختبار الأصالة: هل هناك أي بيت يبدو مألوفاً، مستهلكاً، مكرراً في الشعر أو شبيهاً بإنتاج الآلة الميكانيكي؟ أعد صياغته ليكون مبتكراً وأصيلاً تماماً.
+4. اختبار الصور: راجع الصور البلاغية والاستعارات والتشبيهات وتأكد أنها واضحة، جديدة، حية، خادمة للموضوع، واستبدل المستهلك منها بصور بكر مدهشة.
+5. اختبار البلاغة: راجع أدوات البلاغة من تشبيه واستعارة وجناس وطباق ومقابلة وحسن تعليل والتفات وتقديم وتأخير، ورصّع الأبيات بها بلطف ودون تكلف يضعف المعنى.
+6. اختبار اللغة: راجع النحو والصرف والإملاء وسلامة التراكيب وفصاحة المفردات وجزالة الأسلوب، ولا تسمح بأي خطأ لغوي أو حشو أو ركاكة أو تكرار.
+7. اختبار الموسيقى: راجع إيقاع البحر والانسجام الصوتي وسلامة التفعيلات عروضياً (من أي كسر أو خلل عروضي) وجمال الجرس وتوازن الأبيات، وأعد صياغة أي بيت مكسور الوزن.
+8. اختبار العاطفة: تأكد أن القصيدة تنبض بعاطفة حية حارة وصادقة ملامسة للقلب، وليست مجرد رصف ميكانيكي بارد لكلمات بليغة. أعد بناء الأبيات فاقدة الروح.
+9. اختبار البداية: تأكد أن مطلع القصيدة (البيت الأول) آسر، جذاب، يدخل في جوهر الموضوع مباشرة، ويحمل قوة شاعرة بليغة تهز الوجدان، وأعد صياغته إن كان عادياً.
+10. اختبار الخاتمة: تأكد أن خاتمة القصيدة قوية، مؤثرة، مكتملة الفكرة، وغير متوقعة، ولا تقتصر على مجرد التلخيص البارد.
+11. اختبار توازن القصيدة: راجع توزيع وتناسق الأبيات وتماسك البناء الدرامي والانتقال السلس، وتأكد من عدم وجود أبيات ضعيفة بين أبيات قوية، وعدم وجود حشو يمكن حذفه.
+12. اختبار هوية الشاعر: إذا طلب المستخدم محاكاة شاعر معين (${isSimulatingPoet ? poetName : 'لا يوجد'}): هل استلهمت روحه وأسلوبه الفني وبنيته الفنية المجردة برقي بدلاً من مجرد تقليد ونسخ ألفاظه؟
+13. اختبار الذكاء الاصطناعي: تخلص تماماً من أي أنماط آلية أو عبارات متوقعة أو تكرار في بنية الجمل يكشف هوية الآلة في التوليد.
+14. اختبار القيمة الأدبية: هل تحمل هذه القصيدة قيمة فنية عالية تجعلها جديرة بالقراءة بعد عشرين سنة؟ وهل فيها بيت واحد على الأقل يستحق أن يُحفظ لجماله الفريد؟
+15. القرار النهائي والتحكيم: لا تخرج القصيدة من تحت يدك إلا بعد تنقيحها وصقلها بالكامل لتصبح في أبهى حلة فنية وأعلى مستوى من الفصاحة والجزالة والكمال الموسيقي والعاطفي.
+
+النتيجة المطلوبة:
+نفّذ جميع هذه الاختبارات داخلياً وصامتاً بالكامل. يُمنع منعاً باتاً عرض أي تحليل، أو شرح لخطوات التفكير والمراجعة، أو ذكر للاختبارات في المخرجات للمستخدم.
+أعد إنتاج القصيدة المنقحة والنهائية ككائن JSON مطابق للهيكل التالي تماماً دون أي مقدمات أو علامات markdown إضافية:
+{
+  "title": "عنوان القصيدة المبتكر والمناسب والأنيق جداً بعد التحكيم والتنقيح",
+  "verses": [
+    {
+      "shatr1": "الصدر المنقح والمضبوط بالشكل بدقة متناهية",
+      "shatr2": "العجز المنقح والمضبوط بالشكل بدقة متناهية والملتزم بالروي والقافية",
+      "index": 1
+    }
+  ],
+  "feetUsed": "تفعيلات البحر الفعلية التي جرى النظم عليها بالتفصيل العروضي للقصيدة النهائية بعد التحكيم",
+  "explanation": "شرح أدبي ونقدي بليغ ورفيع للقصيدة النهائية بعد التحكيم، يفصح عن معاني الأبيات وصورها البكر ومفرداتها التراثية بأسلوب شاعري راقٍ وشرح الألفاظ اللغوية التراثية الصعبة بالتفصيل",
+  "weightSafetyPercentage": 100,
+  "rhymeSafetyPercentage": 100,
+  "overallScore": 100
+}
+`;
+
+      const finalReviewedJson = await callGeminiWithJsonParsing({
+        toolName: 'master-literary-judge (Final Review Pass)',
+        model: AI_MODELS.CREATIVE,
+        contents: judgePrompt,
+        ai: aiInstance,
+        config: {
+          systemInstruction: `أنت المحكم الأدبي الأعلى، وريث عباقرة النقد في سوق عكاظ، وحارس ديوان العرب المقدس. وظيفتك هي التحكيم الأدبي النهائي وتصحيح أي خلل أو ضعف عروضي أو فني في القصيدة دون إبراز التفكير أو كشف خطوات المراجعة للمستخدم. لا تظهر أي خطوات تحليلية أو تفسير بل دع الأثر يظهر جلياً في الأبيات والقصيدة النهائية الناتجة في مخرجات الـ JSON حصراً.`,
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -616,17 +786,18 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
 
       const outputPoem = {
         id: Math.random().toString(36).substring(2, 11),
-        title: responseJson.title,
-        verses: responseJson.verses,
+        title: finalReviewedJson.title,
+        verses: finalReviewedJson.verses,
         meterName: meterName,
-        feet: responseJson.feetUsed || "تفعيلات البحر المعتمد",
-        rhymeLetter: customRhymeLetter || responseJson.rhymeLetter || 'مطلقة',
+        feet: finalReviewedJson.feetUsed || "تفعيلات البحر المعتمد",
+        rhymeLetter: customRhymeLetter || finalReviewedJson.rhymeLetter || 'مطلقة',
+        rhymeMovement: rhymeMovement,
         purpose: finalPurpose,
         poetSimulated: isSimulatingPoet ? poetName : undefined,
         isOpposition: isOpposition,
-        explanation: responseJson.explanation,
-        weightSafetyPercentage: responseJson.weightSafetyPercentage || 100,
-        rhymeSafetyPercentage: responseJson.rhymeSafetyPercentage || 100,
+        explanation: finalReviewedJson.explanation,
+        weightSafetyPercentage: finalReviewedJson.weightSafetyPercentage || 100,
+        rhymeSafetyPercentage: finalReviewedJson.rhymeSafetyPercentage || 100,
         createdAt: new Date().toISOString()
       };
 
@@ -636,6 +807,7 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
 
     return finalPoem;
   } finally {
+    activeStatuses.delete(clientId);
     activeUsers.delete(clientId);
   }
 }
@@ -643,7 +815,7 @@ export async function handleGeneratePoem(body: any, aiInstance: GoogleGenAI): Pr
 // -------------------------------------------------------------
 // Advanced Literary Tool Wrapper
 // -------------------------------------------------------------
-export async function handleLiteraryTool(toolAction: string, payload: any, aiInstance: GoogleGenAI): Promise<any> {
+export async function handleLiteraryTool(toolAction: string, payload: any, aiInstance: GoogleGenAI, clientId?: string): Promise<any> {
   if (toolAction === 'generate-rhymes') {
     const { letter } = payload;
     const prompt = `
@@ -662,6 +834,7 @@ export async function handleLiteraryTool(toolAction: string, payload: any, aiIns
   ]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'generate-rhymes',
       model: AI_MODELS.CREATIVE,
@@ -691,6 +864,7 @@ ${topic}
   "reason": "التعليل الفني والبلاغي لاختيار هذا الحرف وكيف يعزز الجرس الموسيقي عاطفة وجو القصيدة النفسي بالتفصيل"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'suggest-best-rawiyy',
       model: AI_MODELS.ANALYTICAL,
@@ -724,6 +898,7 @@ ${meterName ? `- البحر الشعري المحدد: (${meterName})` : ''}
   "examples": ["كلمة1", "كلمة2", "كلمة3", "كلمة4", "كلمة5", "كلمة6", "كلمة7", "كلمة8", "كلمة9", "كلمة10"]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'suggest-rhyme-details',
       model: AI_MODELS.ANALYTICAL,
@@ -757,6 +932,7 @@ ${topic}
   ]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'suggest-meters-and-purposes',
       model: AI_MODELS.ANALYTICAL,
@@ -797,6 +973,7 @@ ${proseText}
   "explanation": "شرح أدبي ونقدي عميق لعملية الصياغة وكيفية استخلاص النظم والأخيلة البيانية المبتكرة التي أضيفت لتعميق النص الأصلي"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'prose-to-poem',
       model: AI_MODELS.CREATIVE,
@@ -831,6 +1008,7 @@ ${formattedVerses}
   "explanation": "تفصيل النقل العروضي والجمالي من بحر ${currentMeter} إلى بحر ${targetMeter}، وبيان التعديلات اللفظية والبلاغية التي أجريت لضمان سلاسة الإيقاع وقوة المعنى"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'transmute-meter',
       model: AI_MODELS.CREATIVE,
@@ -865,6 +1043,7 @@ ${formattedVerses}
   "explanation": "شرح أدبي وبلاغي للتعديل اللفظي الذي طرأ على القوافي وكيفية ترسيخ الجمال اللفظي والمعنى في القالب الجديد"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'change-rhyme',
       model: AI_MODELS.CREATIVE,
@@ -903,6 +1082,7 @@ ${formattedVerses}
   ]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'explain-and-extract-rhetoric',
       model: AI_MODELS.ANALYTICAL,
@@ -939,6 +1119,7 @@ ${text}
   "negatives": ["ملاحظة نقدية أو جمالية تخصصية واقتراح واضح للصقل والارتقاء بالبناء الفني"]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'analyze-style',
       model: AI_MODELS.ANALYTICAL,
@@ -985,6 +1166,7 @@ ${poem2}
   "verdict": "الحكم النقدي والأدبي النهائي الصارم والمرجح لأحد الأسلوبين مبرراً بأبعاد فنية وبلاغية ولغوية عميقة تليق بكبار النقاد"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'compare-poems',
       model: AI_MODELS.ANALYTICAL,
@@ -1023,6 +1205,7 @@ ${poemText}
   "poet": "اسم الشاعر المتوقع للقصيدة الأصلية أو الطابع الفني المهيمن عليها (إذا تعذر معرفته تماماً اترك هذا الحقل فارغاً أو اكتب 'غير معروف')"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'opposition-analyze',
       model: AI_MODELS.ANALYTICAL,
@@ -1081,6 +1264,7 @@ ${newMeanings}
   "explanation": "تقرير بلاغي وعروضي واف يعرض جوهر فكرة المعارضة، تفاصيل الأخيلة والاستعارات المبتكرة، وتفصيلاً عروضياً شاملاً يؤكد سلامة الوزن وجرس القافية والارتقاء الأدبي عن النص الأم"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'opposition-generate',
       model: AI_MODELS.CREATIVE,
@@ -1145,6 +1329,7 @@ ${originalPoem}
   "explanation": "شرح وتحليل أدبي ونقدي رائع ومفصل، يوضح كيف تآزرت الصناعة الشعرية عروضياً وبلاغياً مع الأبيات الأصلية وصورها البيانية ومستواها الجمالي"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'industries-generate',
       model: AI_MODELS.CREATIVE,
@@ -1196,6 +1381,7 @@ ${verseText}
   ]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'analyze-prosody',
       model: AI_MODELS.ANALYTICAL,
@@ -1241,6 +1427,7 @@ ${poemText}
   "comparisonExplanation": "شرح أدبي ونقدي مقارن يفيض بلاغة، يوضح الفروق التعبيرية والجمالية واللفظية بين النصين بمثابة دراسة أسلوبية تخصصية وافية."
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'style-analyze-transform',
       model: AI_MODELS.CREATIVE,
@@ -1280,6 +1467,7 @@ ${poemText}
   "recommendations": ["توصية تخصصية أولى ومفصلة لترقية الفرادة اللفظية والابتكار البلاغي والبياني", "توصية ثانية لتعميق البعد الفلسفي والعاطفي وتفادي النظم الميكانيكي"]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'originality-analyze',
       model: AI_MODELS.ANALYTICAL,
@@ -1321,6 +1509,7 @@ ${poemText}
   ]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'inspiration-generate',
       model: AI_MODELS.CREATIVE,
@@ -1358,6 +1547,7 @@ ${poemText}
   "explanation": "شرح بلاغي وعروضي وجيز وذكي يوضح التعديل الذي طرأ وكيف أصلح المعنى أو الإيقاع تلبيةً لمراد الشاعر وجمال السبك"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'verse-ai-modify',
       model: AI_MODELS.CREATIVE,
@@ -1402,6 +1592,7 @@ ${formattedVerses}
   "recommendations": ["توصية تفصيلية واضحة ومسار تعبيري بديل لإصلاح مواضع الضعف أو الكسور والارتقاء بالنظم", "توصية ثانية عملية لصقل قاموس الشاعر وبلاغته"]
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'workspace-poem-analysis',
       model: AI_MODELS.ANALYTICAL,
@@ -1453,6 +1644,7 @@ ${poemText}
   "rhetoricalCritique": "دراسة نقدية بلاغية شاملة تحاكي تحليلات كبار فحول النقاد والأكاديميين لتقييم عمق الخيال البياني والتكامل الروحي الفني للنص المرفق."
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'rhetorical-analyze',
       model: AI_MODELS.ANALYTICAL,
@@ -1505,6 +1697,7 @@ ${formattedPoems}
   "scholarlyGuidance": "إرشادات وتوجيهات عملية مرسومة بدقة أكاديمية لصقل أدوات الشاعر النظمية والبيانية واللغوية"
 }
 `;
+    if (clientId) setAIStatus(clientId, 'جاري إرسال النص للتحليل.');
     return await callGeminiWithJsonParsing({
       toolName: 'poet-profile-analysis',
       model: AI_MODELS.ANALYTICAL,

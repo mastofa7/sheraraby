@@ -13,6 +13,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { 
+  activeStatuses,
   handleGeneratePoem, 
   handleLiteraryTool, 
   devLogs, 
@@ -91,6 +92,9 @@ async function authenticateFirebaseToken(req: any, res: express.Response, next: 
       } catch (err: any) {
         console.warn(`[Auth] verifyIdToken failed, decoding token directly for sandbox compatibility: ${err.message}`);
         decodedToken = decodeFirebaseToken(token);
+        if (decodedToken && decodedToken.user_id && !decodedToken.uid) {
+          decodedToken.uid = decodedToken.user_id;
+        }
       }
 
       if (decodedToken && decodedToken.uid) {
@@ -743,6 +747,11 @@ app.get('/api/admin/stats', requireAuth, async (req: any, res) => {
 });
 
 // Poem generation endpoint
+app.get("/api/ai-status/:clientId", (req: any, res) => {
+  const status = activeStatuses.get(req.params.clientId) || null;
+  res.json({ status });
+});
+
 app.post('/api/generate-poem', requireAuth, async (req: any, res) => {
   try {
     const isAdmin = isUserAdmin(req);
@@ -870,7 +879,7 @@ app.post('/api/literary-tool', requireAuth, async (req: any, res) => {
 
     const aiInstance = getAiClient();
     const startGemini = Date.now();
-    const result = await handleLiteraryTool(toolAction, payload, aiInstance);
+    const result = await handleLiteraryTool(toolAction, payload, aiInstance, req.body.clientId);
     const duration = Date.now() - startGemini;
 
     // Track successful tool execution
@@ -1190,5 +1199,6 @@ if (!key || key.trim() === '') {
   console.log(`[Startup-Test] ✓ GEMINI_API_KEY is loaded in environment. Length: ${key.trim().length}`);
 }
 console.log('==================================================');
+
 
 export default app;

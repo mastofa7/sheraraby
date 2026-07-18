@@ -86,6 +86,7 @@ function parseFirestoreValue(valueObj: any): any {
 }
 
 function formatFirestoreValue(val: any): any {
+  if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === 'string') return { stringValue: val };
   if (typeof val === 'number') {
     if (Number.isInteger(val)) return { integerValue: String(val) };

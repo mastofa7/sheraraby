@@ -31,7 +31,7 @@ service cloud.firestore {
       allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
       
       // Read/Update/Delete: requires being the admin or the owner of the poem
-      allow read, update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow read, update, delete: if isAdmin() || (isAuthenticated() && resource != null && resource.data.userId == request.auth.uid);
     }
 
     // 3. Usage Logs collection

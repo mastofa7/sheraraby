@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, 
   BookOpen, 
@@ -41,6 +41,7 @@ import TurnstileWidget from './components/TurnstileWidget';
 import WelcomePage from './components/WelcomePage';
 import GatewayPage from './components/GatewayPage';
 import BotanicalThemeBackground from './components/BotanicalThemeBackground';
+import { AIProgressTracker } from './components/AIProgressTracker';
 
 // Lazy load heavy sub-components to optimize initial bundle size, load time, and React rendering parsing
 const AdvancedTools = React.lazy(() => import('./components/AdvancedTools').then(m => ({ default: m.AdvancedTools })));
@@ -54,15 +55,7 @@ import { auth, googleProvider, apiFetch } from './firebase';
 import { signInWithPopup, signInAnonymously, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
 // Sliding educational/literary quotes to entertain the user while generating (which can take 10-15s due to long verses)
-const LOADING_QUOTES = [
-  "يجري الآن وزن الكلمات ومطابقتها للتفعيلات العروضية بدقة...",
-  "يصوغ Gemini الأبيات بلغة تراثية جزلة تليق بدواوين العرب الحكيمة...",
-  "يقوم الشاعر الرقمي بتحليل القافية المحددة وحرف الروي المختار...",
-  "«الشعرُ ديوانُ العربِ، فيهِ حِكمتُهم وبلاغَتُهم وتاريخُهم المَجيد»",
-  "«وما من كاتبٍ إلا سيفنى، ويُبقي الدهرُ ما كتبتْ يداهُ»",
-  "«ولقد دعتني للمحاسن والندى.. خيلٌ مضوَّرةٌ وبيتٌ مُفردُ»",
-  "نقوم الآن بنسج الاستعارات والمجازات وتوظيف البلاغة العباسية الفخمة..."
-];
+
 
 const PRESET_POETS = [
   'المتنبي',
@@ -322,6 +315,7 @@ export default function App() {
   const [rhymeSystem, setRhymeSystem] = useState<RhymeSystem>('unified');
   const [customRhymeLetter, setCustomRhymeLetter] = useState<string>('');
   const [customRhymeType, setCustomRhymeType] = useState<string>('موحدة');
+  const [rhymeMovement, setRhymeMovement] = useState<string>('sukun');
 
   // ميزات متقدمة
   const [activeMainTab, setActiveMainTab] = useState<'studio' | 'opposition' | 'industries' | 'tools' | 'archive' | 'analytics' | 'admin'>('studio');
@@ -358,7 +352,8 @@ export default function App() {
   // App-wide lifecycle states
   const [isRevisionWorkspaceOpen, setIsRevisionWorkspaceOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [loadingQuoteIndex, setLoadingQuoteIndex] = useState<number>(0);
+  const [localAIStatus, setLocalAIStatus] = useState<string | null>(null);
+  const clientIdRef = useRef<string>(`client-${Math.random().toString(36).substr(2, 9)}`);
   const [currentPoem, setCurrentPoem] = useState<GeneratedPoem | null>(null);
   const [history, setHistory] = useState<GeneratedPoem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -485,6 +480,8 @@ export default function App() {
       return;
     }
     setSuggestLoading(true);
+    setLocalAIStatus('تم استلام النص.');
+    setLocalAIStatus('تم استلام النص.');
     setSuggestions(null);
     try {
       const response = await apiFetch('/api/literary-tool', {
@@ -494,9 +491,12 @@ export default function App() {
         },
         body: JSON.stringify({
           toolAction: 'suggest-meters-and-purposes',
-          payload: { topic: description }
+          payload: { topic: description },
+          clientId: user?.uid || clientIdRef.current,
         })
       });
+      setLocalAIStatus('تم استلام نتيجة التحليل.');
+      setLocalAIStatus('تم استلام نتيجة التحليل.');
       const data = await response.json();
       setSuggestions(data);
     } catch (err) {
@@ -506,21 +506,14 @@ export default function App() {
     }
   };
 
-  // Rotate loading quotes when loading is active
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingQuoteIndex((prev) => (prev + 1) % LOADING_QUOTES.length);
-      }, 3500);
-    }
-    return () => clearInterval(interval);
-  }, [loading]);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+      setLocalAIStatus('تم استلام الطلب.');
+      setLocalAIStatus('تم استلام الطلب.');
 
     if (turnstileSiteKey && !turnstileToken) {
       setError('يرجى إكمال التحقق الأمني (Turnstile) أولاً.');
@@ -587,6 +580,7 @@ export default function App() {
         rhymeSystem,
         customRhymeLetter: rhymeSystem === 'custom' ? customRhymeLetter : undefined,
         customRhymeType,
+        rhymeMovement: (rhymeSystem === 'custom' && customRhymeLetter) ? rhymeMovement : undefined,
       };
 
       const response = await apiFetch('/api/generate-poem', {
@@ -596,10 +590,13 @@ export default function App() {
         },
         body: JSON.stringify({
           ...params,
-          turnstileToken
+          turnstileToken,
+          clientId: user?.uid || clientIdRef.current,
         }),
       });
 
+      setLocalAIStatus('تم استلام الاستجابة.');
+      setLocalAIStatus('تم استلام الاستجابة.');
       const responseData = await response.json();
       if (responseData && typeof responseData.remainingDailyUses === 'number') {
         setRemainingDailyUses(responseData.remainingDailyUses);
@@ -619,6 +616,7 @@ export default function App() {
         meterName: rawPoemData.meterName || meterName,
         feet: rawPoemData.feet || 'غير معروف',
         rhymeLetter: rawPoemData.rhymeLetter || customRhymeLetter || 'تلقائي',
+        rhymeMovement: rawPoemData.rhymeMovement || ((rhymeSystem === 'custom' && customRhymeLetter) ? rhymeMovement : undefined),
         purpose: rawPoemData.purpose || (purpose === 'غير ذلك' ? customPurpose : purpose),
         poetSimulated: isSimulatingPoet ? poetName : undefined,
         isOpposition: isOpposition,
@@ -1125,32 +1123,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Loading Overlay */}
-        {loading && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in bg-[#030a05]/98">
-            <div className="relative mb-8">
-              <div className="w-24 h-24 rounded-full border-4 animate-spin border-t-[#dfba6b] border-[#152e1f]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Feather className="w-8 h-8 text-[#8b1d2e] animate-bounce" />
-              </div>
-            </div>
-            
-            <h3 className="font-serif font-bold text-2xl mb-2 text-[#dfba6b]">
-              يجري نظم الدر المنثور عروضياً الآن...
-            </h3>
-            
-            <div className="max-w-md mx-auto p-4 border rounded-2xl shadow-inner bg-[#102216] border-[#dfba6b]/25">
-              <p className="text-sm font-serif italic animate-pulse text-[#dfba6b]">
-                {LOADING_QUOTES[loadingQuoteIndex]}
-              </p>
-            </div>
-            
-            <p className="text-xs text-gray-400 mt-6 font-serif">
-              قد تستغرق الصياغة الدقيقة وعروض البحور من 5 إلى 15 ثانية للتثبت من القافية والوزن.
-            </p>
-          </div>
-        )}
-
+          <AIProgressTracker isActive={loading || suggestLoading} clientId={user?.uid || clientIdRef.current} localStatus={localAIStatus} error={error} />
         {/* Active Tab View */}
         <React.Suspense fallback={
           <div className="p-12 text-center flex flex-col items-center justify-center gap-3 min-h-[300px]" dir="rtl">
@@ -1350,6 +1323,8 @@ export default function App() {
                     purpose={purpose}
                     description={description}
                     isDarkMode={isDarkMode}
+                    rhymeMovement={rhymeMovement}
+                    onChangeRhymeMovement={setRhymeMovement}
                   />
                 </div>
 
